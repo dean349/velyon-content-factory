@@ -175,7 +175,13 @@ export class PortfolioScanner {
     if (config.token) headers['Authorization'] = `Bearer ${config.token}`;
 
     while (hasMore) {
-      const url = new URL(`https://api.github.com/orgs/${config.org}/repos`);
+      let apiPath = `/orgs/${config.org}/repos`;
+      const testRes = await fetch(`https://api.github.com${apiPath}?per_page=1`, { headers });
+      if (testRes.status === 404) {
+        apiPath = `/users/${config.org}/repos`;
+      }
+
+      const url = new URL(`https://api.github.com${apiPath}`);
       url.searchParams.set('per_page', '100');
       url.searchParams.set('page', page.toString());
       url.searchParams.set('type', config.includePrivate ? 'all' : 'public');
