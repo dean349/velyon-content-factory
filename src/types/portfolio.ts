@@ -10,6 +10,11 @@ export type DiscoveryMethod =
 
 export type DiscoveryStatus = 'pending' | 'discovered' | 'enriched' | 'curated' | 'redacted' | 'generation-ready' | 'archived';
 
+// Which showcase catalog an item belongs to: work delivered for a client, or a
+// proprietary tool/system Velyon built and owns itself. Orthogonal to `sourceType`
+// (which describes the technical shape of the item, e.g. webapp vs api vs library).
+export type CatalogType = 'case-study' | 'product';
+
 export type CommentType = 
   | 'missing-info' 
   | 'auto-generate' 
@@ -99,7 +104,13 @@ export interface DiscoveredItem {
   discoveryMethod: DiscoveryMethod;
   discoveryStatus: DiscoveryStatus;
   sourceConfigSnapshot: Partial<DiscoverySourceConfig>; // What config was used
-  
+
+  // Catalog: which showcase this item belongs to. Client work (case-study) is kept
+  // structurally separate from Velyon's own proprietary tools/systems (product) so
+  // the two can be listed independently and then cross-linked (see relatedProducts /
+  // relatedCases below) without conflating "work we did for a client" with "IP we built and own."
+  catalogType: CatalogType;
+
   // Source References
   sourceUrl?: string;             // Primary URL (deployed app, repo, package)
   repoUrl?: string;               // GitHub/GitLab repo
@@ -186,6 +197,9 @@ export interface DiscoveredItem {
 
   // Gap 12: Export & Multi-Format Output
   exportConfigs?: ExportConfig[];
+
+  // Gap 13: Velyon Product Profile (only meaningful when catalogType === 'product')
+  productProfile?: ProductProfile;
 }
 
 export interface TechStack {
@@ -559,4 +573,14 @@ export interface ExportConfig {
   includeMethodology: boolean;
   brandVoice?: string;
   customSections?: string[];
+}
+
+// Gap 13: Velyon Product Profile (proprietary tools/systems Velyon built and owns —
+// distinct from client case studies). Intentionally has NO pricing/tier fields yet.
+export interface ProductProfile {
+  deliveryModel: ('consulting-led' | 'co-build' | 'license' | 'managed')[];
+  maturityStage: 'concept' | 'alpha' | 'beta' | 'production' | 'sunset';
+  targetUseCases: string[];
+  keyCapabilities: string[];
+  internalOnly: boolean; // true = not yet ready to appear in the public /products catalog
 }

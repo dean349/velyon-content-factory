@@ -7,7 +7,7 @@ import {
   Code, Brain, Server, HardDrive, Wifi, Key, TestTube,
   FileText, Image, Video, Link, Tag, Calendar, Clock,
   Star, ArrowUpRight, MoreVertical, Hash, Type,
-  MessageSquare, BookOpen, Box
+  MessageSquare, BookOpen, Box, Rocket, Briefcase
 } from 'lucide-react';
 import { DiscoveredItem, CaseStudyMetric, PortfolioAsset, TeamMember, StackEntry, DiscoveryComment, CommentType } from '../types/portfolio';
 import { GAP_SECTIONS } from './portfolio/gaps/registry';
@@ -23,6 +23,7 @@ import { ContainerConfigSection } from './portfolio/gaps/ContainerConfigSection'
 import { PostLaunchTrackingSection } from './portfolio/gaps/PostLaunchTrackingSection';
 import { CaseStudyTemplateSection } from './portfolio/gaps/CaseStudyTemplateSection';
 import { ExportConfigSection } from './portfolio/gaps/ExportConfigSection';
+import { ProductProfileSection } from './portfolio/gaps/ProductProfileSection';
 
 // ============================================================
 // MODULE-LEVEL HELPERS (used by sub-panels defined outside the main component)
@@ -87,6 +88,17 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
   useEffect(() => {
     setLocalItem(item);
   }, [item]);
+
+  const visibleGapSections = GAP_SECTIONS.filter(g => !g.showWhen || g.showWhen(localItem));
+
+  useEffect(() => {
+    // If the catalog type changes (Case Study <-> Velyon Product), the current tab
+    // may no longer be visible (e.g. was on Product Profile, switched to Case Study).
+    // Fall back to Overview rather than leaving the user on a hidden panel.
+    const stillVisible = ['overview', 'metrics', 'assets', 'team', 'techstack', 'redaction', 'content', 'comments']
+      .includes(editMode) || visibleGapSections.some(g => g.key === editMode);
+    if (!stillVisible) setEditMode('overview');
+  }, [localItem.catalogType]);
 
   const updateField = <K extends keyof DiscoveredItem>(field: K, value: DiscoveredItem[K]) => {
     setLocalItem((prev: DiscoveredItem) => ({ ...prev, [field]: value }));
@@ -306,6 +318,22 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => updateField('catalogType', 'case-study')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${localItem.catalogType === 'case-study' ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                title="Work delivered for a client"
+              >
+                <Briefcase size={12} /> Case Study
+              </button>
+              <button
+                onClick={() => updateField('catalogType', 'product')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${localItem.catalogType === 'product' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                title="A proprietary Velyon-owned tool/system"
+              >
+                <Rocket size={12} /> Velyon Product
+              </button>
+            </div>
             <select
               value={localItem.visibility}
               onChange={e => toggleVisibility(e.target.value as any)}
@@ -333,7 +361,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
           { id: 'techstack', label: 'Tech Stack', icon: <Code size={12} /> },
           { id: 'redaction', label: 'Redaction', icon: <Shield size={12} /> },
           { id: 'content', label: 'Content Hints', icon: <Target size={12} /> },
-          ...GAP_SECTIONS.map(g => ({ id: g.key, label: g.label, icon: <span>{g.icon}</span> })),
+          ...visibleGapSections.map(g => ({ id: g.key, label: g.label, icon: <span>{g.icon}</span> })),
           { id: 'comments', label: 'Comments', icon: <MessageSquare size={12} /> }
         ].map(tab => (
           <button
@@ -352,7 +380,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
 
       {/* Tab Panels */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {editMode === 'overview' && <OverviewPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
+        {editMode === 'overview' && <OverviewPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} allItems={allItems} />}
         {editMode === 'metrics' && <MetricsPanel item={localItem} updateField={updateField} addMetric={addMetric} updateMetric={updateMetric} removeMetric={removeMetric} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'assets' && <AssetsPanel item={localItem} updateField={updateField} addAsset={addAsset} updateAsset={updateAsset} removeAsset={removeAsset} />}
         {editMode === 'team' && <TeamPanel item={localItem} updateField={updateField} addTeamMember={addTeamMember} updateTeamMember={updateTeamMember} removeTeamMember={removeTeamMember} />}
@@ -372,6 +400,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
         {editMode === 'postLaunchTracking' && <PostLaunchTrackingSection item={localItem} data={localItem.postLaunchTracking} onChange={v => updateField('postLaunchTracking', v)} />}
         {editMode === 'suggestedTemplate' && <CaseStudyTemplateSection item={localItem} data={localItem.suggestedTemplate} onChange={v => updateField('suggestedTemplate', v)} />}
         {editMode === 'exportConfigs' && <ExportConfigSection item={localItem} data={localItem.exportConfigs?.[0]} onChange={v => updateField('exportConfigs', [v])} />}
+        {editMode === 'productProfile' && <ProductProfileSection item={localItem} data={localItem.productProfile} onChange={v => updateField('productProfile', v)} />}
       </div>
     </div>
   );
@@ -381,7 +410,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
 // SUB-PANELS
 // ============================================================
 
-const OverviewPanel: React.FC<{ item: DiscoveredItem; updateField: any; updateNestedField: any }> = ({ item, updateField, updateNestedField }) => (
+const OverviewPanel: React.FC<{ item: DiscoveredItem; updateField: any; updateNestedField: any; allItems: DiscoveredItem[] }> = ({ item, updateField, updateNestedField, allItems }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Field label="Tagline" value={item.tagline} onChange={v => updateField('tagline', v)} placeholder="One-line value proposition" />
@@ -405,13 +434,80 @@ const OverviewPanel: React.FC<{ item: DiscoveredItem; updateField: any; updateNe
       <TagField label="Product Tags" tags={item.productTags} onChange={v => updateField('productTags', v)} suggestions={[]} />
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="border-t border-white/5 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
       <TagField label="Methodology Phases" tags={item.methodologyPhases} onChange={v => updateField('methodologyPhases', v)} suggestions={['Discovery','Architecture','Implementation','Evaluation','Deployment','Scaling']} />
-      <TagField label="Related Products" tags={item.relatedProducts} onChange={v => updateField('relatedProducts', v)} suggestions={[]} />
-      <TagField label="Related Cases" tags={item.relatedCases} onChange={v => updateField('relatedCases', v)} suggestions={[]} />
+      {item.catalogType === 'case-study' ? (
+        <CrossLinkPicker
+          label="🚀 Velyon Products Used In This Case Study"
+          selectedIds={item.relatedProducts}
+          options={allItems.filter(i => i.catalogType === 'product' && i.id !== item.id)}
+          onChange={ids => updateField('relatedProducts', ids)}
+        />
+      ) : (
+        <CrossLinkPicker
+          label="📋 Case Studies Built With This Product"
+          selectedIds={item.relatedCases}
+          options={allItems.filter(i => i.catalogType === 'case-study')}
+          onChange={() => {}}
+          readOnly
+        />
+      )}
     </div>
   </div>
 );
+
+/**
+ * Bidirectional cross-link picker between the Case Study and Velyon Product catalogs.
+ * On a case-study item this is an editable multi-select of products (feeds `relatedProducts`).
+ * On a product item this is a read-only view of the case studies that reference it back
+ * (`relatedCases`, auto-derived by `portfolioScanner.syncCrossLinks` on save).
+ */
+const CrossLinkPicker: React.FC<{ label: string; selectedIds: string[]; options: DiscoveredItem[]; onChange: (ids: string[]) => void; readOnly?: boolean }> = ({ label, selectedIds, options, onChange, readOnly }) => {
+  const [showPicker, setShowPicker] = useState(false);
+  const optionsById = new Map(options.map(o => [o.id, o]));
+  const available = options.filter(o => !selectedIds.includes(o.id));
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</label>
+      <div className="flex flex-wrap gap-2 items-center">
+        {selectedIds.map(id => {
+          const opt = optionsById.get(id);
+          return (
+            <span key={id} className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold rounded-full flex items-center gap-1.5">
+              {opt ? opt.name : id}
+              {!readOnly && (
+                <button onClick={() => onChange(selectedIds.filter(x => x !== id))} className="hover:text-rose-400"><X size={10} /></button>
+              )}
+            </span>
+          );
+        })}
+        {selectedIds.length === 0 && (
+          <span className="text-[10px] text-slate-600 italic">
+            {readOnly ? 'None yet — auto-fills once a case study links to this product' : 'None selected'}
+          </span>
+        )}
+        {!readOnly && (
+          <div className="relative">
+            <button onClick={() => setShowPicker(p => !p)} className="px-2.5 py-1 bg-black/40 border border-white/10 text-slate-400 text-[10px] font-bold rounded-full hover:border-white/20 hover:text-slate-200">+ Add</button>
+            {showPicker && (
+              <div className="absolute z-10 top-full mt-1 left-0 w-64 max-h-52 overflow-y-auto bg-slate-900 border border-white/10 rounded-xl shadow-xl p-1">
+                {available.length === 0 && (
+                  <div className="px-3 py-2 text-[10px] text-slate-500">No Velyon products curated yet — add one from the project list first.</div>
+                )}
+                {available.map(o => (
+                  <button key={o.id} onClick={() => { onChange([...selectedIds, o.id]); setShowPicker(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-white/5 rounded-lg">
+                    {o.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const MetricsPanel: React.FC<{ item: DiscoveredItem; updateField: any; addMetric: any; updateMetric: any; removeMetric: any; onAddComment: any }> = ({ 
   item, updateField, addMetric, updateMetric, removeMetric, onAddComment 

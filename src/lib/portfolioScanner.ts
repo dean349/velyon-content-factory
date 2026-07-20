@@ -13,7 +13,8 @@ import {
   ContentHints,
   EnrichmentEntry,
   FieldGenerationRequest,
-  DiscoveryStatus
+  DiscoveryStatus,
+  CatalogType
 } from '../types/portfolio';
 
 export class PortfolioScanner {
@@ -476,6 +477,60 @@ export class PortfolioScanner {
   }
 
   // ============================================================
+  // MANUAL ENTRY (for items that aren't scanned — e.g. internal tools/CLIs,
+  // or any of Velyon's own products that don't have their own Vercel/GitHub deploy)
+  // ============================================================
+
+  createManualEntry(name: string, catalogType: CatalogType): DiscoveredItem {
+    return this.createBaseItem({
+      name,
+      catalogType,
+      discoveryMethod: 'manual-entry',
+      discoveryStatus: 'discovered',
+      sourceType: catalogType === 'product' ? 'product' : 'webapp',
+      ...(catalogType === 'product' ? {
+        productProfile: {
+          deliveryModel: [],
+          maturityStage: 'beta',
+          targetUseCases: [],
+          keyCapabilities: [],
+          internalOnly: true
+        }
+      } : {})
+    });
+  }
+
+  // ============================================================
+  // CROSS-LINK SYNC: Client case studies declare which Velyon products they used
+  // (item.relatedProducts, edited on the case-study side). This derives the reverse
+  // link — which case studies used each product (item.relatedCases on product items)
+  // — so the relationship only has to be declared once and stays consistent.
+  // ============================================================
+
+  syncCrossLinks(allItems: DiscoveredItem[]): DiscoveredItem[] {
+    const casesByProductId = new Map<string, string[]>();
+
+    for (const item of allItems) {
+      if (item.catalogType !== 'case-study') continue;
+      for (const productId of item.relatedProducts || []) {
+        const existing = casesByProductId.get(productId) || [];
+        if (!existing.includes(item.id)) existing.push(item.id);
+        casesByProductId.set(productId, existing);
+      }
+    }
+
+    return allItems.map(item => {
+      if (item.catalogType !== 'product') return item;
+      const derivedCases = casesByProductId.get(item.id) || [];
+      const sameSet =
+        derivedCases.length === (item.relatedCases || []).length &&
+        derivedCases.every(id => (item.relatedCases || []).includes(id));
+      if (sameSet) return item;
+      return { ...item, relatedCases: derivedCases };
+    });
+  }
+
+  // ============================================================
   // BASE ITEM CREATION
   // ============================================================
 
@@ -490,6 +545,7 @@ export class PortfolioScanner {
       discoveryMethod: partial.discoveryMethod || 'manual-entry',
       discoveryStatus: partial.discoveryStatus || 'discovered',
       sourceConfigSnapshot: partial.sourceConfigSnapshot || {},
+      catalogType: partial.catalogType || 'case-study',
       sourceUrl: partial.sourceUrl,
       repoUrl: partial.repoUrl,
       deployUrl: partial.deployUrl,
@@ -535,7 +591,8 @@ export class PortfolioScanner {
         fieldsUpdated: Object.keys(partial),
         source: partial.discoveryMethod || 'manual-entry',
         changes: []
-      }]
+      }],
+      productProfile: partial.productProfile
     };
 
     this.items.set(id, item);

@@ -298,6 +298,7 @@ export const FactoryView = () => {
   });
   const [selectedPortfolioItem, setSelectedPortfolioItem] = useState<DiscoveredItem | null>(null);
   const [scannerMode, setScannerMode] = useState<'discover' | 'curate' | 'generate'>('discover');
+  const [catalogFilter, setCatalogFilter] = useState<'all' | 'case-study' | 'product'>('all');
   const [scanSources, setScanSources] = useState<{
     vercel: boolean; netlify: boolean; github: boolean; urlCrawl: boolean;
   }>({ vercel: true, netlify: false, github: true, urlCrawl: true });
@@ -583,11 +584,22 @@ export const FactoryView = () => {
     }
   };
 
+  const handleAddManualEntry = (catalogType: 'case-study' | 'product') => {
+    const name = window.prompt(catalogType === 'product' ? 'Name of the Velyon product:' : 'Name of the case study / client project:');
+    if (!name || !name.trim()) return;
+    const item = portfolioScanner.createManualEntry(name.trim(), catalogType);
+    setPortfolioItems(prev => [...prev, item]);
+    setCatalogFilter(catalogType);
+    setSelectedPortfolioItem(item);
+  };
+
   const handleSavePortfolioItem = (item: DiscoveredItem) => {
     setPortfolioItems(prev => {
       const idx = prev.findIndex(p => p.id === item.id);
-      if (idx >= 0) { const updated = [...prev]; updated[idx] = item; return updated; }
-      return [...prev, item];
+      const merged = idx >= 0 ? [...prev.slice(0, idx), item, ...prev.slice(idx + 1)] : [...prev, item];
+      // Re-derive which case studies reference each Velyon product (relatedCases on
+      // product items) from the case studies' own relatedProducts declarations.
+      return portfolioScanner.syncCrossLinks(merged);
     });
     setSelectedPortfolioItem(null);
   };
@@ -1449,10 +1461,37 @@ export const FactoryView = () => {
                             <p className="text-sm text-center">Click a project below to edit its details, metrics, assets, team, redaction rules, and add comments.</p>
                           </div>
                         )}
-                        <div className="border-t border-white/5 pt-4 max-h-64 overflow-y-auto">
-                          <h4 className="font-bold text-slate-100 mb-3 text-xs uppercase tracking-wider">Projects ({portfolioItems.length})</h4>
+                        <div className="border-t border-white/5 pt-4 max-h-80 overflow-y-auto">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center bg-black/30 border border-white/5 rounded-xl p-1 gap-1">
+                              {([
+                                { key: 'all', label: `All (${portfolioItems.length})` },
+                                { key: 'case-study', label: `📋 Case Studies (${portfolioItems.filter(i => i.catalogType === 'case-study').length})` },
+                                { key: 'product', label: `🚀 Velyon Products (${portfolioItems.filter(i => i.catalogType === 'product').length})` },
+                              ] as const).map(f => (
+                                <button
+                                  key={f.key}
+                                  onClick={() => setCatalogFilter(f.key)}
+                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
+                                    catalogFilter === f.key ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-slate-200'
+                                  }`}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => handleAddManualEntry('case-study')} className="px-2.5 py-1 bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[10px] font-bold rounded-lg hover:bg-indigo-500/30 flex items-center gap-1"><PlusCircle size={10} /> Case Study</button>
+                              <button onClick={() => handleAddManualEntry('product')} className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold rounded-lg hover:bg-emerald-500/30 flex items-center gap-1"><PlusCircle size={10} /> Velyon Product</button>
+                            </div>
+                          </div>
                           <div className="space-y-2">
-                            {portfolioItems.map(item => (
+                            {portfolioItems.filter(item => catalogFilter === 'all' || item.catalogType === catalogFilter).length === 0 && (
+                              <div className="text-center py-8 text-slate-500 text-xs">
+                                {catalogFilter === 'product' ? 'No Velyon products yet — click "+ Velyon Product" above to add one.' : 'No items in this view yet.'}
+                              </div>
+                            )}
+                            {portfolioItems.filter(item => catalogFilter === 'all' || item.catalogType === catalogFilter).map(item => (
                               <button
                                 key={item.id}
                                 onClick={() => setSelectedPortfolioItem(item)}
@@ -1462,6 +1501,9 @@ export const FactoryView = () => {
                                     : 'bg-black/30 border-white/5 hover:border-white/10'
                                 }`}
                               >
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${item.catalogType === 'product' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
+                                  {item.catalogType === 'product' ? '🚀' : '📋'}
+                                </span>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 truncate">
                                     <span className="font-bold text-slate-100 truncate">{item.name}</span>
