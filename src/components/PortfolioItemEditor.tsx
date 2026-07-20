@@ -317,10 +317,10 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
       {/* Tab Panels */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {editMode === 'overview' && <OverviewPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
-        {editMode === 'metrics' && <MetricsPanel item={localItem} updateField={updateField} addMetric={addMetric} updateMetric={updateMetric} removeMetric={removeMetric} onAddComment={showCommentModal && onAddComment} />}
+        {editMode === 'metrics' && <MetricsPanel item={localItem} updateField={updateField} addMetric={addMetric} updateMetric={updateMetric} removeMetric={removeMetric} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'assets' && <AssetsPanel item={localItem} updateField={updateField} addAsset={addAsset} updateAsset={updateAsset} removeAsset={removeAsset} />}
         {editMode === 'team' && <TeamPanel item={localItem} updateField={updateField} addTeamMember={addTeamMember} updateTeamMember={updateTeamMember} removeTeamMember={removeTeamMember} />}
-        {editMode === 'techstack' && <TechStackPanel item={localItem} updateField={updateField} addStackEntry={addStackEntry} updateStackEntry={updateStackEntry} removeStackEntry={removeStackEntry} getConfidenceColor={getConfidenceColor} onAddComment={showCommentModal && onAddComment} />}
+        {editMode === 'techstack' && <TechStackPanel item={localItem} updateField={updateField} addStackEntry={addStackEntry} updateStackEntry={updateStackEntry} removeStackEntry={removeStackEntry} getConfidenceColor={getConfidenceColor} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'redaction' && <RedactionPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'content' && <ContentHintsPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'comments' && <CommentsPanel item={localItem} comments={localItem.comments} onAddComment={onAddComment} onResolveComment={onResolveComment} getCommentTypeColor={getCommentTypeColor} />}
