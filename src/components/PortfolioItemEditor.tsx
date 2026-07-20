@@ -6,23 +6,81 @@ import {
   ChevronRight, ChevronDown, AlertCircle, CheckCircle2,
   Code, Brain, Server, HardDrive, Wifi, Key, TestTube,
   FileText, Image, Video, Link, Tag, Calendar, Clock,
-  Star, ArrowUpRight, MoreVertical, Hash, Type
+  Star, ArrowUpRight, MoreVertical, Hash, Type,
+  MessageSquare, BookOpen, Box
 } from 'lucide-react';
-import { DiscoveredItem, CaseStudyMetric, PortfolioAsset, TeamMember, StackEntry, DiscoveryComment, CommentType } from './portfolio-types';
+import { DiscoveredItem, CaseStudyMetric, PortfolioAsset, TeamMember, StackEntry, DiscoveryComment, CommentType } from '../types/portfolio';
+import { GAP_SECTIONS } from './portfolio/gaps/registry';
+import { TestimonialSection } from './portfolio/gaps/TestimonialSection';
+import { ClientIntakeSection } from './portfolio/gaps/ClientIntakeSection';
+import { TransformationSection } from './portfolio/gaps/TransformationSection';
+import { DeliveryMetadataSection } from './portfolio/gaps/DeliveryMetadataSection';
+import { MethodologyWalkthroughSection } from './portfolio/gaps/MethodologyWalkthroughSection';
+import { ApprovalWorkflowSection } from './portfolio/gaps/ApprovalWorkflowSection';
+import { PerformanceDataSection } from './portfolio/gaps/PerformanceDataSection';
+import { CompetitiveContextSection } from './portfolio/gaps/CompetitiveContextSection';
+import { ContainerConfigSection } from './portfolio/gaps/ContainerConfigSection';
+import { PostLaunchTrackingSection } from './portfolio/gaps/PostLaunchTrackingSection';
+import { CaseStudyTemplateSection } from './portfolio/gaps/CaseStudyTemplateSection';
+import { ExportConfigSection } from './portfolio/gaps/ExportConfigSection';
+
+// ============================================================
+// MODULE-LEVEL HELPERS (used by sub-panels defined outside the main component)
+// ============================================================
+
+const getStackSuggestions = (category: string): string[] => {
+  const suggestions: Record<string, string[]> = {
+    frontend: ['React', 'Next.js', 'Vue', 'Svelte', 'Angular', 'Tailwind CSS', 'Framer Motion', 'TypeScript'],
+    backend: ['Node.js', 'Python', 'Go', 'Rust', 'Java', 'C#', 'FastAPI', 'Express'],
+    ai: ['OpenAI', 'Anthropic', 'Gemini', 'LangChain', 'LlamaIndex', 'Pinecone', 'ChromaDB', 'Ollama'],
+    infrastructure: ['Vercel', 'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform'],
+    monitoring: ['Datadog', 'Grafana', 'Sentry', 'Prometheus', 'Vercel Analytics'],
+    database: ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Supabase', 'Neon', 'PlanetScale'],
+    messaging: ['Kafka', 'RabbitMQ', 'NATS', 'Redis Streams', 'SQS'],
+    auth: ['Clerk', 'Auth0', 'NextAuth', 'Supabase Auth', 'Firebase Auth'],
+    testing: ['Jest', 'Vitest', 'Playwright', 'Cypress', 'pytest'],
+    cicd: ['GitHub Actions', 'CircleCI', 'Jenkins', 'ArgoCD', 'Vercel']
+  };
+  return suggestions[category] || [];
+};
+
+const getConfidenceColor = (conf: StackEntry['confidence']): string => {
+  const colors: Record<StackEntry['confidence'], string> = {
+    detected: 'text-emerald-400 bg-emerald-500/20',
+    inferred: 'text-blue-400 bg-blue-500/20',
+    manual: 'text-indigo-400 bg-indigo-500/20',
+    fabricated: 'text-amber-400 bg-amber-500/20'
+  };
+  return colors[conf] || colors.manual;
+};
+
+const getCommentTypeColor = (type: CommentType): { color: string; bg: string; icon: React.ReactNode } => {
+  const colors: Record<CommentType, { color: string; bg: string; icon: React.ReactNode }> = {
+    'missing-info': { color: 'text-red-400', bg: 'bg-red-500/20', icon: <AlertCircle size={10} className="text-red-400" /> },
+    'auto-generate': { color: 'text-purple-400', bg: 'bg-purple-500/20', icon: <Brain size={10} className="text-purple-400" /> },
+    'fabricated': { color: 'text-amber-400', bg: 'bg-amber-500/20', icon: <Star size={10} className="text-amber-400" /> },
+    'needs-review': { color: 'text-blue-400', bg: 'bg-blue-500/20', icon: <Eye size={10} className="text-blue-400" /> },
+    'legal-hold': { color: 'text-rose-400', bg: 'bg-rose-500/20', icon: <Shield size={10} className="text-rose-400" /> },
+    'technical-debt': { color: 'text-orange-400', bg: 'bg-orange-500/20', icon: <Wrench size={10} className="text-orange-400" /> },
+    'client-feedback': { color: 'text-emerald-400', bg: 'bg-emerald-500/20', icon: <MessageSquare size={10} className="text-emerald-400" /> },
+    'general': { color: 'text-slate-400', bg: 'bg-slate-500/20', icon: <FileText size={10} className="text-slate-400" /> }
+  };
+  return colors[type] || colors.general;
+};
 
 interface PortfolioItemEditorProps {
   item: DiscoveredItem;
   onSave: (item: DiscoveredItem) => void;
   onClose: () => void;
   allItems: DiscoveredItem[];
-  onAddComment: (itemId: string, comment: Omit<DiscoveryComment, 'id' | 'itemId' | 'createdAt'>) => DiscoveryComment;
+  onAddComment: (itemId: string, comment: Omit<DiscoveryComment, 'id' | 'itemId' | 'createdAt' | 'resolved'>) => DiscoveryComment;
   onResolveComment: (itemId: string, commentId: string, resolvedBy: string) => boolean;
 }
 
 export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({ 
   item, onSave, onClose, allItems, onAddComment, onResolveComment 
 }) => {
-  const [editMode, setEditMode] = useState<'overview' | 'metrics' | 'assets' | 'team' | 'redaction' | 'content' | 'techstack' | 'comments'>('overview');
+  const [editMode, setEditMode] = useState<string>('overview');
   const [localItem, setLocalItem] = useState<DiscoveredItem>(item);
   const [showCommentModal, setShowCommentModal] = useState<{ fieldPath: string; type?: CommentType } | null>(null);
 
@@ -31,11 +89,11 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
   }, [item]);
 
   const updateField = <K extends keyof DiscoveredItem>(field: K, value: DiscoveredItem[K]) => {
-    setLocalItem(prev => ({ ...prev, [field]: value }));
+    setLocalItem((prev: DiscoveredItem) => ({ ...prev, [field]: value }));
   };
 
   const updateNestedField = (fieldPath: string, value: any) => {
-    setLocalItem(prev => {
+    setLocalItem((prev: DiscoveredItem) => {
       const clone = JSON.parse(JSON.stringify(prev));
       const paths = fieldPath.split('.');
       let current: any = clone;
@@ -77,11 +135,11 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
   };
 
   const updateMetric = (id: string, field: keyof CaseStudyMetric, value: any) => {
-    updateField('metrics', localItem.metrics.map(m => m.id === id ? { ...m, [field]: value } : m));
+    updateField('metrics', localItem.metrics.map((m: CaseStudyMetric) => m.id === id ? { ...m, [field]: value } : m));
   };
 
   const removeMetric = (id: string) => {
-    updateField('metrics', localItem.metrics.filter(m => m.id !== id));
+    updateField('metrics', localItem.metrics.filter((m: CaseStudyMetric) => m.id !== id));
   };
 
   const addAsset = () => {
@@ -96,11 +154,11 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
   };
 
   const updateAsset = (id: string, field: keyof PortfolioAsset, value: any) => {
-    updateField('assets', localItem.assets.map(a => a.id === id ? { ...a, [field]: value } : a));
+    updateField('assets', localItem.assets.map((a: PortfolioAsset) => a.id === id ? { ...a, [field]: value } : a));
   };
 
   const removeAsset = (id: string) => {
-    updateField('assets', localItem.assets.filter(a => a.id !== id));
+    updateField('assets', localItem.assets.filter((a: PortfolioAsset) => a.id !== id));
   };
 
   const addTeamMember = () => {
@@ -115,11 +173,11 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
   };
 
   const updateTeamMember = (id: string, field: keyof TeamMember, value: any) => {
-    updateField('team', localItem.team.map(m => m.id === id ? { ...m, [field]: value } : m));
+    updateField('team', localItem.team.map((m: TeamMember) => m.id === id ? { ...m, [field]: value } : m));
   };
 
   const removeTeamMember = (id: string) => {
-    updateField('team', localItem.team.filter(m => m.id !== id));
+    updateField('team', localItem.team.filter((m: TeamMember) => m.id !== id));
   };
 
   const addStackEntry = (category: keyof DiscoveredItem['techStack']) => {
@@ -145,7 +203,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
 
   const removeStackEntry = (category: keyof DiscoveredItem['techStack'], index: number) => {
     const stack = { ...localItem.techStack };
-    stack[category] = stack[category].filter((_, i) => i !== index);
+    stack[category] = stack[category].filter((_: StackEntry, i: number) => i !== index);
     updateField('techStack', stack);
   };
 
@@ -201,30 +259,6 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
       'internal-only': { color: 'text-slate-400', bg: 'bg-slate-500/20', icon: <Shield size={12} className="text-slate-400" />, label: 'Internal Only' }
     };
     return configs[vis] || configs['internal-only'];
-  };
-
-  const getConfidenceColor = (conf: StackEntry['confidence']) => {
-    const colors: Record<StackEntry['confidence'], string> = {
-      detected: 'text-emerald-400 bg-emerald-500/20',
-      inferred: 'text-blue-400 bg-blue-500/20',
-      manual: 'text-indigo-400 bg-indigo-500/20',
-      fabricated: 'text-amber-400 bg-amber-500/20'
-    };
-    return colors[conf];
-  };
-
-  const getCommentTypeColor = (type: CommentType) => {
-    const colors: Record<CommentType, { color: string; bg: string; icon: React.ReactNode }> = {
-      'missing-info': { color: 'text-red-400', bg: 'bg-red-500/20', icon: <AlertCircle size={10} className="text-red-400" /> },
-      'auto-generate': { color: 'text-purple-400', bg: 'bg-purple-500/20', icon: <Brain size={10} className="text-purple-400" /> },
-      'fabricated': { color: 'text-amber-400', bg: 'bg-amber-500/20', icon: <Star size={10} className="text-amber-400" /> },
-      'needs-review': { color: 'text-blue-400', bg: 'bg-blue-500/20', icon: <Eye size={10} className="text-blue-400" /> },
-      'legal-hold': { color: 'text-rose-400', bg: 'bg-rose-500/20', icon: <Shield size={10} className="text-rose-400" /> },
-      'technical-debt': { color: 'text-orange-400', bg: 'bg-orange-500/20', icon: <Wrench size={10} className="text-orange-400" /> },
-      'client-feedback': { color: 'text-emerald-400', bg: 'bg-emerald-500/20', icon: <MessageSquare size={10} className="text-emerald-400" /> },
-      'general': { color: 'text-slate-400', bg: 'bg-slate-500/20', icon: <FileText size={10} className="text-slate-400" /> }
-    };
-    return colors[type] || colors.general;
   };
 
   return (
@@ -299,11 +333,12 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
           { id: 'techstack', label: 'Tech Stack', icon: <Code size={12} /> },
           { id: 'redaction', label: 'Redaction', icon: <Shield size={12} /> },
           { id: 'content', label: 'Content Hints', icon: <Target size={12} /> },
+          ...GAP_SECTIONS.map(g => ({ id: g.key, label: g.label, icon: <span>{g.icon}</span> })),
           { id: 'comments', label: 'Comments', icon: <MessageSquare size={12} /> }
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setEditMode(tab.id as any)}
+            onClick={() => setEditMode(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-w-[100px] justify-center whitespace-nowrap ${
               editMode === tab.id
                 ? 'bg-rose-500 text-white shadow-md'
@@ -325,6 +360,18 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
         {editMode === 'redaction' && <RedactionPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'content' && <ContentHintsPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'comments' && <CommentsPanel item={localItem} comments={localItem.comments} onAddComment={onAddComment} onResolveComment={onResolveComment} getCommentTypeColor={getCommentTypeColor} />}
+        {editMode === 'clientIntake' && <ClientIntakeSection item={localItem} data={localItem.clientIntake} onChange={v => updateField('clientIntake', v)} />}
+        {editMode === 'testimonials' && <TestimonialSection item={localItem} data={localItem.testimonials} onChange={v => updateField('testimonials', v)} />}
+        {editMode === 'transformation' && <TransformationSection item={localItem} data={localItem.transformation} onChange={v => updateField('transformation', v)} />}
+        {editMode === 'deliveryMetadata' && <DeliveryMetadataSection item={localItem} data={localItem.deliveryMetadata} onChange={v => updateField('deliveryMetadata', v)} />}
+        {editMode === 'methodologyWalkthrough' && <MethodologyWalkthroughSection item={localItem} data={localItem.methodologyWalkthrough} onChange={v => updateField('methodologyWalkthrough', v)} />}
+        {editMode === 'approvalWorkflow' && <ApprovalWorkflowSection item={localItem} data={localItem.approvalWorkflow} onChange={v => updateField('approvalWorkflow', v)} />}
+        {editMode === 'performanceData' && <PerformanceDataSection item={localItem} data={localItem.performanceData} onChange={v => updateField('performanceData', v)} />}
+        {editMode === 'competitiveContext' && <CompetitiveContextSection item={localItem} data={localItem.competitiveContext} onChange={v => updateField('competitiveContext', v)} />}
+        {editMode === 'containerConfig' && <ContainerConfigSection item={localItem} data={localItem.containerConfig} onChange={v => updateField('containerConfig', v)} />}
+        {editMode === 'postLaunchTracking' && <PostLaunchTrackingSection item={localItem} data={localItem.postLaunchTracking} onChange={v => updateField('postLaunchTracking', v)} />}
+        {editMode === 'suggestedTemplate' && <CaseStudyTemplateSection item={localItem} data={localItem.suggestedTemplate} onChange={v => updateField('suggestedTemplate', v)} />}
+        {editMode === 'exportConfigs' && <ExportConfigSection item={localItem} data={localItem.exportConfigs?.[0]} onChange={v => updateField('exportConfigs', [v])} />}
       </div>
     </div>
   );
@@ -395,7 +442,7 @@ const MetricsPanel: React.FC<{ item: DiscoveredItem; updateField: any; addMetric
                 <button onClick={() => updateMetric(metric.id, 'verified', !metric.verified)} className={`p-1 rounded ${metric.verified ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Verified">
                   <CheckCircle2 size={12} />
                 </button>
-                <button onClick={() => onAddComment(item.id, { fieldPath: `metrics[${index}].value`, type: 'missing-info', content: '', author: 'user', resolved: false })} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-slate-200" title="Add Comment">
+                <button onClick={() => onAddComment(item.id, { fieldPath: `metrics[${index}].value`, type: 'missing-info', content: '', author: 'user' })} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-slate-200" title="Add Comment">
                   <MessageSquare size={12} />
                 </button>
                 <button onClick={() => removeMetric(metric.id)} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12} /></button>
@@ -576,7 +623,7 @@ const TechStackPanel: React.FC<{ item: DiscoveredItem; updateField: any; addStac
                     className="w-24 bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-slate-200 outline-none focus:border-indigo-500/40 font-mono"
                   />
                   <button onClick={() => removeStackEntry(cat, entryIndex)} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12} /></button>
-                  <button onClick={() => onAddComment(item.id, { fieldPath: `techStack.${cat}[${entryIndex}].name`, type: 'missing-info', content: '', author: 'user', resolved: false })} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-slate-200" title="Add Comment"><MessageSquare size={12} /></button>
+                  <button onClick={() => onAddComment(item.id, { fieldPath: `techStack.${cat}[${entryIndex}].name`, type: 'missing-info', content: '', author: 'user' })} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-slate-200" title="Add Comment"><MessageSquare size={12} /></button>
                 </div>
               ))}
             </div>
@@ -680,7 +727,7 @@ const CommentsPanel: React.FC<{ item: DiscoveredItem; comments: DiscoveryComment
           fieldPath={modalFieldPath} 
           onClose={() => { setShowModal(null); setModalFieldPath(''); }}
           onSubmit={(type, content, prompt, context, confidence, source) => {
-            onAddComment(item.id, { fieldPath: modalFieldPath, type, content, author: 'user', resolved: false, generationPrompt: prompt, generationContext: context, fabricationConfidence: confidence, fabricationSource: source });
+            onAddComment(item.id, { fieldPath: modalFieldPath, type, content, author: 'user', generationPrompt: prompt, generationContext: context, fabricationConfidence: confidence, fabricationSource: source });
             setShowModal(null);
             setModalFieldPath('');
           }}
@@ -694,14 +741,14 @@ const CommentsPanel: React.FC<{ item: DiscoveredItem; comments: DiscoveryComment
 // HELPER COMPONENTS
 // ============================================================
 
-const Field: React.FC<{ label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; rows?: number; type?: 'text' | 'select'; options?: string[]; size?: 'sm' | 'md' }> = ({ 
+const Field: React.FC<{ label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; rows?: number; type?: 'text' | 'select' | 'number'; options?: string[]; size?: 'sm' | 'md' }> = ({ 
   label, value, onChange, placeholder, multiline, rows = 3, type = 'text', options, size = 'md' 
 }) => (
   <div className="space-y-1.5">
     <label className={`text-[10px] font-bold uppercase tracking-wider text-slate-500 ${size === 'sm' ? 'text-[9px]' : ''}`}>{label}</label>
     {type === 'select' ? (
       <select value={value} onChange={e => onChange(e.target.value)} className={`w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500/40 ${size === 'sm' ? 'py-1.5' : 'py-2'}`}>
-        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        {(options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
     ) : multiline ? (
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500/40 font-mono resize-none" />
@@ -759,8 +806,8 @@ const VisibilityCard: React.FC<{ level: DiscoveredItem['visibility']; active: bo
   );
 };
 
-const CommentCard: React.FC<{ comment: DiscoveryComment; index: number; onResolve: () => void; getTypeColor: any }> = ({ comment, index, onResolve, getTypeColor }) => {
-  const colors = getCommentTypeColor(comment.type);
+const CommentCard: React.FC<{ comment: DiscoveryComment; index: number; onResolve: () => void; getTypeColor: (type: CommentType) => { color: string; bg: string; icon: React.ReactNode } }> = ({ comment, index, onResolve, getTypeColor }) => {
+  const colors = getTypeColor(comment.type);
   return (
     <div className="bg-black/30 border border-white/5 rounded-2xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-4">
@@ -836,7 +883,7 @@ const CommentModal: React.FC<{ fieldPath: string; onClose: () => void; onSubmit:
               <input type="range" min="0" max="1" step="0.05" value={confidence} onChange={e => setConfidence(parseFloat(e.target.value))} className="flex-1 accent-amber-500" />
               <span className="font-bold text-amber-400">Confidence: {Math.round(confidence * 100)}%</span>
             </label>
-            <Field label="Fabrication Source" value={source} onChange={e => setSource(e.target.value as any)} type="select" options={['industry-benchmark','similar-project','extrapolation','client-report','educated-guess']} />
+            <Field label="Fabrication Source" value={source} onChange={v => setSource(v as any)} type="select" options={['industry-benchmark','similar-project','extrapolation','client-report','educated-guess']} />
           </div>
         )}
         <div className="flex justify-end gap-2 pt-4">
@@ -848,10 +895,10 @@ const CommentModal: React.FC<{ fieldPath: string; onClose: () => void; onSubmit:
   );
 };
 
-// Missing icons
-const Archive = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="1"/><path d="M6 15h12"/><path d="M10 3v6"/></svg>;
-const Puzzle = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M18 8a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z"/><path d="M6 18a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2z"/><path d="M4 8a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>;
-const GitBranch = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>;
-const Wrench = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 16.2l4.6-4.6a2.1 2.1 0 0 0 0-3l-1.4-1.4a2.1 2.1 0 0 0-3 0l-3.2 3.2"/><path d="m15.7 17.3-6.5 6.5a2.1 2.1 0 0 1-3-3l1.8-1.8"/></svg>;
+// Missing icons — accept size/className props like lucide-react
+const Archive = ({ size = 12, className = '' }: { size?: number; className?: string }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="2" y="3" width="20" height="18" rx="1"/><path d="M6 15h12"/><path d="M10 3v6"/></svg>;
+const Puzzle = ({ size = 20, className = '' }: { size?: number; className?: string }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M18 8a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z"/><path d="M6 18a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2z"/><path d="M4 8a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>;
+const GitBranch = ({ size = 20, className = '' }: { size?: number; className?: string }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>;
+const Wrench = ({ size = 10, className = '' }: { size?: number; className?: string }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M14.7 16.2l4.6-4.6a2.1 2.1 0 0 0 0-3l-1.4-1.4a2.1 2.1 0 0 0-3 0l-3.2 3.2"/><path d="m15.7 17.3-6.5 6.5a2.1 2.1 0 0 1-3-3l1.8-1.8"/></svg>;
 
 export default PortfolioItemEditor;

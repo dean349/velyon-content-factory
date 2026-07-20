@@ -38,8 +38,10 @@ import {
 
 import { SupabaseDropzone } from './SupabaseDropzone';
 import { PortfolioItemEditor } from './PortfolioItemEditor';
-import { portfolioScanner, DiscoveredItem, DiscoverySourceConfig } from '../lib/portfolioScanner';
-import { Box, Search, Zap, Edit3, Triangle, Github, Globe, RefreshCw, GitBranch, ArrowUpRight, Puzzle } from 'lucide-react';
+import { ErrorBoundary } from './ErrorBoundary';
+import { portfolioScanner } from '../lib/portfolioScanner';
+import { DiscoveredItem, DiscoverySourceConfig } from '../types/portfolio';
+import { Box, Search, Zap, Edit3, Triangle, GitBranch, ArrowUpRight, Puzzle } from 'lucide-react';
 
 // Live sample data of premium 21st.dev elements to inject
 const STYLED_COMPONENTS_BLUEPRINTS = {
@@ -297,14 +299,13 @@ export const FactoryView = () => {
   const [selectedPortfolioItem, setSelectedPortfolioItem] = useState<DiscoveredItem | null>(null);
   const [scannerMode, setScannerMode] = useState<'discover' | 'curate' | 'generate'>('discover');
   const [scanSources, setScanSources] = useState<{
-    vercel: boolean; netlify: boolean; cloudflare: boolean; github: boolean; urlCrawl: boolean;
-  }>({ vercel: true, netlify: false, cloudflare: false, github: true, urlCrawl: true });
+    vercel: boolean; netlify: boolean; github: boolean; urlCrawl: boolean;
+  }>({ vercel: true, netlify: false, github: true, urlCrawl: true });
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryLogs, setDiscoveryLogs] = useState<string[]>([]);
   const [discoveryConfig, setDiscoveryConfig] = useState<Partial<DiscoverySourceConfig>>({
     vercel: { teamId: '', token: '', includePreviewDeployments: false },
     netlify: { siteIds: [], token: '' },
-    cloudflare: { accountId: '', apiToken: '', projectNames: [] },
     github: { org: '', token: '', includePrivate: false, repoFilter: { topics: [], languages: [], pushedAfter: new Date(Date.now() - 365*24*60*60*1000).toISOString().split('T')[0] }, pages: { enabledOnly: true } },
     urlCrawl: { urls: ['https://velyon.io'], followRedirects: true, maxDepth: 2, extractAssets: true }
   });
@@ -555,12 +556,6 @@ export const FactoryView = () => {
         const items = await portfolioScanner.discoverNetlifySites(discoveryConfig.netlify);
         allItems.push(...items);
         setDiscoveryLogs(prev => [...prev, `[NETLIFY] Discovered ${items.length} sites`]);
-      }
-      if (scanSources.cloudflare && discoveryConfig.cloudflare?.accountId && discoveryConfig.cloudflare?.apiToken) {
-        setDiscoveryLogs(prev => [...prev, '[CLOUDFLARE] Fetching pages projects...']);
-        const items = await portfolioScanner.discoverCloudflarePages(discoveryConfig.cloudflare);
-        allItems.push(...items);
-        setDiscoveryLogs(prev => [...prev, `[CLOUDFLARE] Discovered ${items.length} projects`]);
       }
       if (scanSources.github && discoveryConfig.github?.org) {
         setDiscoveryLogs(prev => [...prev, '[GITHUB] Fetching repositories...']);
@@ -1350,8 +1345,7 @@ export const FactoryView = () => {
                             {[
                               { key: 'vercel', label: 'Vercel', icon: <Triangle className="text-indigo-400" size={16} />, desc: 'Team projects' },
                               { key: 'netlify', label: 'Netlify', icon: <Globe className="text-emerald-400" size={16} />, desc: 'Sites with edge' },
-                              { key: 'cloudflare', label: 'Cloudflare', icon: <Server className="text-purple-400" size={16} />, desc: 'Pages + Workers' },
-                              { key: 'github', label: 'GitHub', icon: <Github className="text-slate-300" size={16} />, desc: 'Org repos' },
+                              { key: 'github', label: 'GitHub', icon: <GitBranch className="text-slate-300" size={16} />, desc: 'Org repos' },
                               { key: 'github', label: 'GitHub Pages', icon: <ArrowUpRight className="text-blue-400" size={16} />, desc: 'Deploy URLs' },
                               { key: 'urlCrawl', label: 'URL Crawl', icon: <Globe className="text-rose-400" size={16} />, desc: 'Any URL' }
                             ].map((source, idx) => (
@@ -1375,23 +1369,23 @@ export const FactoryView = () => {
                           {scanSources.vercel && (
                             <div className="mb-4 space-y-2 p-3 bg-black/30 rounded-xl border border-white/5">
                               <div className="text-xs font-bold text-indigo-400 mb-2">Vercel Configuration</div>
-                              <input placeholder="Vercel Team ID" value={discoveryConfig.vercel?.teamId || ''} onChange={e => setDiscoveryConfig(prev => ({ ...prev, vercel: { ...prev.vercel, teamId: e.target.value } }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500/40 font-mono" />
-                              <input placeholder="Vercel Access Token" type="password" value={discoveryConfig.vercel?.token || ''} onChange={e => setDiscoveryConfig(prev => ({ ...prev, vercel: { ...prev.vercel, token: e.target.value } }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500/40 font-mono" />
+                              <input placeholder="Vercel Team ID" value={discoveryConfig.vercel?.teamId || ''} onChange={e => setDiscoveryConfig((prev: Partial<DiscoverySourceConfig>) => ({ ...prev, vercel: { ...prev.vercel, teamId: e.target.value } as DiscoverySourceConfig['vercel'] }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500/40 font-mono" />
+                              <input placeholder="Vercel Access Token" type="password" value={discoveryConfig.vercel?.token || ''} onChange={e => setDiscoveryConfig((prev: Partial<DiscoverySourceConfig>) => ({ ...prev, vercel: { ...prev.vercel, token: e.target.value } as DiscoverySourceConfig['vercel'] }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500/40 font-mono" />
                             </div>
                           )}
 
                           {scanSources.github && (
                             <div className="mb-4 space-y-2 p-3 bg-black/30 rounded-xl border border-white/5">
                               <div className="text-xs font-bold text-slate-300 mb-2">GitHub Configuration</div>
-                              <input placeholder="GitHub Organization" value={discoveryConfig.github?.org || ''} onChange={e => setDiscoveryConfig(prev => ({ ...prev, github: { ...prev.github, org: e.target.value } }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-slate-400/40 font-mono" />
-                              <input placeholder="GitHub Token (optional)" type="password" value={discoveryConfig.github?.token || ''} onChange={e => setDiscoveryConfig(prev => ({ ...prev, github: { ...prev.github, token: e.target.value } }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-slate-400/40 font-mono" />
+                              <input placeholder="GitHub Organization" value={discoveryConfig.github?.org || ''} onChange={e => setDiscoveryConfig((prev: Partial<DiscoverySourceConfig>) => ({ ...prev, github: { ...prev.github, org: e.target.value } as DiscoverySourceConfig['github'] }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-slate-400/40 font-mono" />
+                              <input placeholder="GitHub Token (optional)" type="password" value={discoveryConfig.github?.token || ''} onChange={e => setDiscoveryConfig((prev: Partial<DiscoverySourceConfig>) => ({ ...prev, github: { ...prev.github, token: e.target.value } as DiscoverySourceConfig['github'] }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-slate-400/40 font-mono" />
                             </div>
                           )}
 
                           {scanSources.urlCrawl && (
                             <div className="mb-4 space-y-2 p-3 bg-black/30 rounded-xl border border-white/5">
                               <div className="text-xs font-bold text-rose-400 mb-2">URL Crawl Configuration</div>
-                              <textarea placeholder="One URL per line" value={discoveryConfig.urlCrawl?.urls?.join('\n') || ''} onChange={e => setDiscoveryConfig(prev => ({ ...prev, urlCrawl: { ...prev.urlCrawl, urls: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) } }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-rose-500/40 font-mono" rows={3} />
+                              <textarea placeholder="One URL per line" value={discoveryConfig.urlCrawl?.urls?.join('\n') || ''} onChange={e => setDiscoveryConfig((prev: Partial<DiscoverySourceConfig>) => ({ ...prev, urlCrawl: { ...prev.urlCrawl, urls: e.target.value.split('\n').map((s: string) => s.trim()).filter(Boolean) } as DiscoverySourceConfig['urlCrawl'] }))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:border-rose-500/40 font-mono" rows={3} />
                             </div>
                           )}
 
@@ -1425,14 +1419,29 @@ export const FactoryView = () => {
                     {scannerMode === 'curate' && (
                       <div className="space-y-4 flex-1 flex flex-col">
                         {selectedPortfolioItem ? (
-                          <PortfolioItemEditor
-                            item={selectedPortfolioItem}
-                            onSave={handleSavePortfolioItem}
-                            onClose={() => setSelectedPortfolioItem(null)}
-                            allItems={portfolioItems}
-                            onAddComment={portfolioScanner.addComment.bind(portfolioScanner)}
-                            onResolveComment={portfolioScanner.resolveComment.bind(portfolioScanner)}
-                          />
+                          <ErrorBoundary
+                            label="Portfolio Editor"
+                            resetKeys={[selectedPortfolioItem.id]}
+                            fallback={(error, reset) => (
+                              <div className="p-6 text-slate-100">
+                                <h3 className="text-lg font-bold text-rose-400 mb-2">Could not open this item</h3>
+                                <pre className="text-xs text-slate-400 whitespace-pre-wrap bg-black/40 rounded-xl p-4 mb-4">{error.message}</pre>
+                                <div className="flex gap-3">
+                                  <button onClick={reset} className="px-4 py-2 bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-xl hover:bg-rose-500/30">Retry</button>
+                                  <button onClick={() => setSelectedPortfolioItem(null)} className="px-4 py-2 bg-white/5 border border-white/10 text-slate-400 text-xs font-bold rounded-xl hover:bg-white/10">Close editor</button>
+                                </div>
+                              </div>
+                            )}
+                          >
+                            <PortfolioItemEditor
+                              item={selectedPortfolioItem}
+                              onSave={handleSavePortfolioItem}
+                              onClose={() => setSelectedPortfolioItem(null)}
+                              allItems={portfolioItems}
+                              onAddComment={portfolioScanner.addComment.bind(portfolioScanner)}
+                              onResolveComment={portfolioScanner.resolveComment.bind(portfolioScanner)}
+                            />
+                          </ErrorBoundary>
                         ) : (
                           <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
                             <Box size={64} className="mb-4 opacity-30" />

@@ -1,7 +1,6 @@
 export type DiscoveryMethod = 
   | 'vercel' 
   | 'netlify' 
-  | 'cloudflare' 
   | 'github-repo' 
   | 'github-pages' 
   | 'url-crawl' 
@@ -51,12 +50,6 @@ export interface DiscoverySourceConfig {
   netlify?: {
     siteIds: string[];
     token: string;
-  };
-  // Cloudflare Pages
-  cloudflare?: {
-    accountId: string;
-    apiToken: string;
-    projectNames?: string[];
   };
   // GitHub
   github?: {

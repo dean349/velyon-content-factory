@@ -77,25 +77,25 @@ export class PortfolioScanner {
       sourceUrl: `https://${project.name}.vercel.app`,
       deployUrl: `https://${project.name}.vercel.app`,
       repoUrl,
-      name: project.name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      name: project.name.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
       slug: project.name.toLowerCase(),
       tagline: `Deployed on Vercel • ${framework}`,
       description: `Production web application deployed on Vercel with automatic CI/CD. Framework: ${framework}. ${project.updatedAt ? `Last deployed: ${new Date(project.updatedAt).toLocaleDateString()}.` : ''}`,
       techStack: {
-        frontend: [framework],
+        frontend: [{ name: framework, category: 'frontend', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
         backend: [],
         ai: [],
-        infrastructure: ['Vercel', 'Edge Network', 'Git Integration'],
-        monitoring: ['Vercel Analytics', 'Vercel Speed Insights'],
+        infrastructure: [{ name: 'Vercel', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Edge Network', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Git Integration', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
+        monitoring: [{ name: 'Vercel Analytics', category: 'monitoring', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Vercel Speed Insights', category: 'monitoring', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
         database: [],
         messaging: [],
         auth: [],
         testing: [],
-        cicd: ['Vercel Git Integration']
+        cicd: [{ name: 'Vercel Git Integration', category: 'cicd', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }]
       },
       status: 'production',
       discoveryStatus: 'discovered',
-      sourceConfigSnapshot: { vercel: { teamId: config?.teamId, includePreviewDeployments: config?.includePreviewDeployments } },
+      sourceConfigSnapshot: { vercel: { teamId: config?.teamId || '', token: config?.token || '', includePreviewDeployments: config?.includePreviewDeployments } },
       comments: []
     });
   }
@@ -133,103 +133,30 @@ export class PortfolioScanner {
       sourceUrl: site.url,
       deployUrl: site.ssl_url || site.url,
       repoUrl: site.repo_url,
-      name: site.name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      name: site.name.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
       slug: site.name.toLowerCase(),
       tagline: `Hosted on Netlify • ${framework}`,
       description: `Web application deployed on Netlify with continuous deployment. Build command: ${buildSettings.cmd || 'N/A'}. Framework: ${framework}.`,
       techStack: {
-        frontend: [framework],
+        frontend: [{ name: framework, category: 'frontend', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
         backend: [],
         ai: [],
-        infrastructure: ['Netlify', 'Edge Functions', 'Netlify Forms', 'Netlify Identity'],
-        monitoring: ['Netlify Analytics'],
+        infrastructure: [{ name: 'Netlify', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Edge Functions', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Netlify Forms', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Netlify Identity', category: 'infrastructure', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
+        monitoring: [{ name: 'Netlify Analytics', category: 'monitoring', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }],
         database: [],
         messaging: [],
-        auth: site.identity_instances?.length ? ['Netlify Identity'] : [],
+        auth: site.identity_instances?.length ? [{ name: 'Netlify Identity', category: 'auth', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }] : [],
         testing: [],
-        cicd: ['Netlify Build', 'Git Integration']
+        cicd: [{ name: 'Netlify Build', category: 'cicd', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }, { name: 'Git Integration', category: 'cicd', confidence: 'detected', source: 'header', detectedAt: new Date().toISOString() }]
       },
       status: site.state === 'ready' ? 'production' : 'beta',
       discoveryStatus: 'discovered',
-      sourceConfigSnapshot: { netlify: { siteIds: config?.siteIds } },
+      sourceConfigSnapshot: { netlify: { siteIds: config?.siteIds || [], token: config?.token || '' } },
       comments: []
     });
   }
 
-  // 3. Cloudflare Pages Discovery
-  async discoverCloudflarePages(config: DiscoverySourceConfig['cloudflare']): Promise<DiscoveredItem[]> {
-    if (!config?.accountId || !config?.apiToken) {
-      throw new Error('Cloudflare discovery requires accountId and apiToken');
-    }
-
-    const items: DiscoveredItem[] = [];
-    let page = 1;
-    let hasMore = true;
-
-    while (hasMore) {
-      const url = new URL(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/pages/projects`);
-      url.searchParams.set('page', page.toString());
-      url.searchParams.set('per_page', '100');
-
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${config.apiToken}` }
-      });
-
-      if (!res.ok) {
-        throw new Error(`Cloudflare API error: ${res.status}`);
-      }
-
-      const data = await res.json();
-      const projects = data.result || [];
-
-      for (const project of projects) {
-        if (!config.projectNames?.length || config.projectNames.includes(project.name)) {
-          items.push(this.transformCloudflareProject(project, config));
-        }
-      }
-
-      hasMore = data.result_info?.page < data.result_info?.total_pages;
-      page++;
-    }
-
-    return items;
-  }
-
-  private transformCloudflareProject(project: any, config: DiscoverySourceConfig['cloudflare']): DiscoveredItem {
-    const deployment = project.latest_deployment;
-    const buildConfig = project.build_config || {};
-
-    return this.createBaseItem({
-      id: `cf-pages-${project.id}`,
-      sourceType: 'webapp',
-      discoveryMethod: 'cloudflare',
-      sourceUrl: deployment?.url || `https://${project.name}.pages.dev`,
-      deployUrl: deployment?.url || `https://${project.name}.pages.dev`,
-      repoUrl: project.source?.config?.repo_url,
-      name: project.name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-      slug: project.name.toLowerCase(),
-      tagline: `Cloudflare Pages • ${buildConfig.build_command || 'Static'}`,
-      description: `Web application deployed on Cloudflare Pages. Build: ${buildConfig.build_command || 'N/A'}. Output: ${buildConfig.destination_dir || 'N/A'}. ${deployment?.created_on ? `Last deployed: ${new Date(deployment.created_on).toLocaleDateString()}.` : ''}`,
-      techStack: {
-        frontend: [buildConfig.build_command?.includes('next') ? 'Next.js' : buildConfig.build_command?.includes('vite') ? 'Vite' : 'Static'],
-        backend: [],
-        ai: [],
-        infrastructure: ['Cloudflare Pages', 'Cloudflare Workers', 'Cloudflare KV', 'Cloudflare R2'],
-        monitoring: ['Cloudflare Web Analytics'],
-        database: project.d1_databases?.length ? ['Cloudflare D1'] : [],
-        messaging: [],
-        auth: [],
-        testing: [],
-        cicd: ['Cloudflare Pages CI/CD', 'Git Integration']
-      },
-      status: 'production',
-      discoveryStatus: 'discovered',
-      sourceConfigSnapshot: { cloudflare: { accountId: config?.accountId, projectNames: config?.projectNames } },
-      comments: []
-    });
-  }
-
-  // 4. GitHub Repositories Discovery
+  // 3. GitHub Repositories Discovery
   async discoverGitHubRepos(config: DiscoverySourceConfig['github']): Promise<DiscoveredItem[]> {
     if (!config?.org) {
       throw new Error('GitHub discovery requires org');
@@ -278,16 +205,17 @@ export class PortfolioScanner {
     return items;
   }
 
-  private shouldIncludeRepo(repo: any, filter?: DiscoverySourceConfig['github']['repoFilter']): boolean {
+  private shouldIncludeRepo(repo: any, filter?: { topics?: string[]; languages?: string[]; pushedAfter?: string; archived?: boolean }): boolean {
     if (!filter) return true;
     if (filter.archived === false && repo.archived) return false;
     if (filter.pushedAfter && new Date(repo.pushed_at) < new Date(filter.pushedAfter)) return false;
     if (filter.languages?.length && !filter.languages.includes(repo.language)) return false;
-    if (filter.topics?.length && !filter.topics.some(t => repo.topics?.includes(t))) return false;
+    if (filter.topics?.length && !filter.topics.some((t: string) => repo.topics?.includes(t))) return false;
     return true;
   }
 
   private async transformGitHubRepo(repo: any, config: DiscoverySourceConfig['github']): Promise<DiscoveredItem> {
+    const now = new Date().toISOString();
     // Detect source type from topics
     const topics = repo.topics || [];
     let sourceType: DiscoveredItem['sourceType'] = 'webapp';
@@ -300,7 +228,7 @@ export class PortfolioScanner {
     // Get languages
     let languages: string[] = [];
     if (repo.language) languages.push(repo.language);
-    if (config.token) {
+    if (config?.token) {
       try {
         const langRes = await fetch(`https://api.github.com/repos/${repo.full_name}/languages`, {
           headers: { Authorization: `Bearer ${config.token}` }
@@ -316,7 +244,7 @@ export class PortfolioScanner {
     let longDescription: string | undefined;
     try {
       const readmeRes = await fetch(`https://api.github.com/repos/${repo.full_name}/readme`, {
-        headers: { Authorization: `Bearer ${config.token}`, Accept: 'application/vnd.github.v3.raw' }
+        headers: { Authorization: `Bearer ${config?.token}`, Accept: 'application/vnd.github.v3.raw' }
       });
       if (readmeRes.ok) {
         longDescription = await readmeRes.text();
@@ -338,27 +266,27 @@ export class PortfolioScanner {
       repoUrl: repo.html_url,
       deployUrl,
       packageUrl: repo.homepage,
-      name: repo.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      name: repo.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
       slug: repo.name.toLowerCase(),
       tagline: repo.description || `${sourceType} • ${repo.language || 'Multi-language'} • ${repo.stargazers_count}★`,
       description: repo.description || `GitHub repository: ${repo.full_name}. ${repo.stargazers_count} stars, ${repo.forks_count} forks. Primary language: ${repo.language || 'N/A'}.`,
       longDescription,
       techStack: {
-        frontend: languages.filter(l => ['TypeScript', 'JavaScript', 'TSX', 'JSX', 'Vue', 'Svelte'].includes(l)),
-        backend: languages.filter(l => ['Python', 'Go', 'Rust', 'Java', 'C#', 'Node.js', 'Ruby', 'PHP'].includes(l)),
-        ai: topics.filter((t: string) => ['langchain', 'llamaindex', 'pinecone', 'weaviate', 'chromadb', 'qdrant', 'milvus', 'ollama', 'huggingface', 'transformers', 'pytorch', 'tensorflow', 'jax'].includes(t)),
-        infrastructure: ['GitHub Actions', 'Docker'].concat(topics.filter(t => ['kubernetes', 'terraform', 'ansible', 'aws', 'gcp', 'azure'].includes(t))),
-        monitoring: topics.filter(t => ['prometheus', 'grafana', 'datadog', 'sentry'].includes(t)),
-        database: topics.filter(t => ['postgresql', 'mysql', 'mongodb', 'redis', 'sqlite', 'supabase', 'planetscale', 'neon'].includes(t)),
-        messaging: topics.filter(t => ['kafka', 'rabbitmq', 'nats', 'redis-streams'].includes(t)),
-        auth: topics.filter(t => ['clerk', 'auth0', 'nextauth', 'supabase-auth', 'firebase-auth'].includes(t)),
-        testing: topics.filter(t => ['jest', 'vitest', 'playwright', 'cypress', 'pytest'].includes(t)),
-        cicd: ['GitHub Actions'].concat(topics.filter(t => ['argo', 'tekton', 'jenkins'].includes(t)))
+        frontend: languages.filter(l => ['TypeScript', 'JavaScript', 'TSX', 'JSX', 'Vue', 'Svelte'].includes(l)).map(l => ({ name: l, category: 'frontend', confidence: 'detected' as const, source: 'header' as const, detectedAt: now })),
+        backend: languages.filter(l => ['Python', 'Go', 'Rust', 'Java', 'C#', 'Node.js', 'Ruby', 'PHP'].includes(l)).map(l => ({ name: l, category: 'backend', confidence: 'detected' as const, source: 'header' as const, detectedAt: now })),
+        ai: topics.filter((t: string) => ['langchain', 'llamaindex', 'pinecone', 'weaviate', 'chromadb', 'qdrant', 'milvus', 'ollama', 'huggingface', 'transformers', 'pytorch', 'tensorflow', 'jax'].includes(t)).map((t: string) => ({ name: t, category: 'ai', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        infrastructure: ['GitHub Actions', 'Docker'].concat(topics.filter((t: string) => ['kubernetes', 'terraform', 'ansible', 'aws', 'gcp', 'azure'].includes(t))).map((t: string) => ({ name: t, category: 'infrastructure', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        monitoring: topics.filter((t: string) => ['prometheus', 'grafana', 'datadog', 'sentry'].includes(t)).map((t: string) => ({ name: t, category: 'monitoring', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        database: topics.filter((t: string) => ['postgresql', 'mysql', 'mongodb', 'redis', 'sqlite', 'supabase', 'planetscale', 'neon'].includes(t)).map((t: string) => ({ name: t, category: 'database', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        messaging: topics.filter((t: string) => ['kafka', 'rabbitmq', 'nats', 'redis-streams'].includes(t)).map((t: string) => ({ name: t, category: 'messaging', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        auth: topics.filter((t: string) => ['clerk', 'auth0', 'nextauth', 'supabase-auth', 'firebase-auth'].includes(t)).map((t: string) => ({ name: t, category: 'auth', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        testing: topics.filter((t: string) => ['jest', 'vitest', 'playwright', 'cypress', 'pytest'].includes(t)).map((t: string) => ({ name: t, category: 'testing', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now })),
+        cicd: ['GitHub Actions'].concat(topics.filter((t: string) => ['argo', 'tekton', 'jenkins'].includes(t))).map((t: string) => ({ name: t, category: 'cicd', confidence: 'inferred' as const, source: 'meta-tag' as const, detectedAt: now }))
       },
       status: repo.archived ? 'archived' : repo.has_pages ? 'production' : 'beta',
       visibility: repo.private ? 'internal-only' : 'public',
       discoveryStatus: 'discovered',
-      sourceConfigSnapshot: { github: { org: config?.org, includePrivate: config?.includePrivate } },
+      sourceConfigSnapshot: { github: { org: config?.org || '', includePrivate: config?.includePrivate } },
       comments: [],
       metrics: repo.stargazers_count ? [{
         id: `github-stars-${repo.id}`,
@@ -439,7 +367,7 @@ export class PortfolioScanner {
       techStack: this.getEmptyTechStack(),
       status: 'production',
       discoveryStatus: 'discovered',
-      sourceConfigSnapshot: { urlCrawl: { urls: config?.urls, followRedirects: config?.followRedirects } },
+      sourceConfigSnapshot: { urlCrawl: { urls: config?.urls || [], followRedirects: config?.followRedirects } },
       comments: []
     });
   }
@@ -605,7 +533,7 @@ export class PortfolioScanner {
         timestamp: now,
         triggeredBy: 'discovery',
         fieldsUpdated: Object.keys(partial),
-        source: partial.discoveryMethod,
+        source: partial.discoveryMethod || 'manual-entry',
         changes: []
       }]
     };
