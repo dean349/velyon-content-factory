@@ -591,7 +591,8 @@ const RedactionPanel: React.FC<{ item: DiscoveredItem; updateField: any; updateN
   <div className="space-y-6">
     <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4">
       <h4 className="font-bold text-indigo-400 flex items-center gap-2 mb-3"><Shield size={18} /> Redaction Strategy</h4>
-      <p className="text-sm text-slate-300">Define how this project appears in public galleries, case studies, and product pages.</    </div>
+      <p className="text-sm text-slate-300">Define how this project appears in public galleries, case studies, and product pages.</p>
+      </div>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {['public', 'client-approved', 'redacted', 'internal-only'].map(level => (
