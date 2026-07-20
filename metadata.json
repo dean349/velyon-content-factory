@@ -1,0 +1,6 @@
+{
+  "name": "Velyon Website Content Factory",
+  "description": "An interactive workspace for generating, scanning, and managing premium website assets, site sitemaps, interactive wireframes, design systems, and component code integrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
