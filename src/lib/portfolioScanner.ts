@@ -617,6 +617,54 @@ export class PortfolioScanner {
     }
   }
 
+  async fetchAuthenticatedPage(
+    url: string,
+    middlewareUser?: string,
+    middlewarePass?: string,
+    supabaseUrl?: string,
+    supabaseAnonKey?: string,
+    supabaseEmail?: string,
+    supabasePassword?: string,
+  ): Promise<string> {
+    // Step 1: Try direct fetch with middleware Basic Auth
+    try {
+      const headers: Record<string, string> = {};
+      if (middlewareUser && middlewarePass) {
+        headers['Authorization'] = `Basic ${btoa(`${middlewareUser}:${middlewarePass}`)}`;
+      }
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const html = await res.text();
+        if (!html.includes('/auth?redirect=')) return html;
+      }
+    } catch {}
+
+    // Step 2: Call the server-side API route for Supabase Auth
+    if (supabaseUrl && supabaseAnonKey && supabaseEmail && supabasePassword) {
+      try {
+        const apiBase = window.location.origin;
+        const resp = await fetch(`${apiBase}/api/scrape`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetUrl: url,
+            supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword,
+            middlewareUser, middlewarePass,
+          }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.html && data.authMethod !== 'supabase-failed' && data.authMethod !== 'none') {
+            return data.html;
+          }
+        }
+      } catch {}
+    }
+
+    // Step 3: Fallback to metadata
+    return '';
+  }
+
   async autoClassify(
     item: DiscoveredItem,
     anthropicApiKey: string,
@@ -631,31 +679,9 @@ export class PortfolioScanner {
 ARCHITECTURE PATTERNS (pick one): multi-agent, rag-pipeline, single-agent-tools, model-pipeline, fine-tuned-model, api-orchestration, real-time-streaming, batch-processing, hybrid-complex
 AUTONOMY LEVELS (pick one): fully-autonomous, human-in-the-loop, human-approval-required, advisory-only`;
 
-    let html = '';
     const url = item.deployUrl || item.sourceUrl;
-    try {
-      if (!url) throw new Error('No URL');
-      const headers: Record<string, string> = {};
-
-      // Try middleware Basic Auth first
-      if (middlewareUser && middlewarePass) {
-        headers['Authorization'] = `Basic ${btoa(`${middlewareUser}:${middlewarePass}`)}`;
-      }
-
-      let res = await fetch(url, { headers });
-
-      // If middleware auth failed or wasn't provided, try Supabase Auth
-      if ((!res.ok || res.redirected) && supabaseUrl && supabaseAnonKey && supabaseEmail && supabasePassword) {
-        const token = await this.supabaseLogin(supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword);
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-          res = await fetch(url, { headers });
-        }
-      }
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      html = await res.text();
-    } catch {
+    let html = url ? await this.fetchAuthenticatedPage(url, middlewareUser, middlewarePass, supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword) : '';
+    if (!html) {
       html = [item.name, item.tagline, item.description, ...(item.capabilityTags || [])].filter(Boolean).join(' ');
     }
 
