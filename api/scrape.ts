@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Try the Supabase SSR approach: use the session to create an authenticated client
         // and fetch the page through Supabase's edge functions or API
-        const supabaseClient = createClient(supabaseUrl, anonKey, {
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
           global: {
             headers: { Authorization: `Bearer ${accessToken}` },
           },
