@@ -569,7 +569,7 @@ export class PortfolioScanner {
       }
     }
 
-    const fullText = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
+    const fullText = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 15000);
     const lowerText = fullText.toLowerCase();
 
     const keywordCategories: Record<string, string[]> = {
@@ -707,8 +707,15 @@ DETECTED SIGNALS:
 - Keyword Scores: ${JSON.stringify(signals.keywordScores)}
 - Project: ${item.name} — ${item.tagline} — ${item.description}
 
-PAGE TEXT (first 8000 chars):
-${signals.fullText.slice(0, 8000)}
+PAGE TEXT (first 12000 chars):
+${signals.fullText.slice(0, 12000)}
+
+CONFIDENCE SCORING RULES:
+- 0.9-1.0: Page clearly describes AI features, models, architecture — strong evidence across multiple signals
+- 0.7-0.8: Page has identifiable tech stack and some AI indicators — decent evidence
+- 0.5-0.6: Limited content but project name/description hint at AI use
+- 0.3-0.4: Minimal content, mostly navigation/shell — weak evidence
+- Score at 0.7 or higher if signals + page text together provide enough context to classify confidently
 
 Return JSON with EXACTLY these fields:
 {
@@ -717,7 +724,7 @@ Return JSON with EXACTLY these fields:
   "modelsUsed": ["Model Name 1", "Model Name 2"],
   "autonomyLevel": "id",
   "methodologies": ["tag1", "tag2"],
-  "confidence": 0.85
+  "confidence": 0.75
 }`;
 
       const parsed = await this.callAnthropicAPI(prompt, anthropicApiKey);
