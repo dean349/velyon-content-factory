@@ -133,6 +133,13 @@ Ten categories: frontend, backend, ai, infrastructure, monitoring, database, mes
 - **Source** — where the entry came from (package.json, header, Dockerfile, k8s-manifest, user-input, ai-generated, etc.)
 - The Vercel scan auto-populates `frontend` (framework), `infrastructure` (Vercel, Edge Network, Git Integration), `monitoring` (Vercel Analytics, Speed Insights), and `cicd` (Git Integration) — everything else you add manually
 
+#### 🧠 AI Methodology
+Houses the **Auto Classify** and **Deep Scan GitHub** buttons — this is the tab most people miss.
+- **Auto Classify** — fetches the item's live page (or repo README) and asks the AI to tag it: AI categories (agentic-ai, generative-ai, rag-pipeline, etc.), architecture pattern, autonomy level, models used, and methodologies. Runs through the middleware/Supabase auth flow automatically if the site is protected.
+- **Deep Scan GitHub** — for repo-backed items, pulls README + package.json for a richer classification pass
+- Below the buttons: the AI classification fields themselves, editable if you want to override what the AI picked
+- Confidence score shown per classification — low confidence usually means the scanner couldn't reach the page/repo content and fell back to metadata only
+
 #### 🔒 Redaction — **read Section 7 before skipping this**
 Controls how the entry appears publicly. Four levels: Public / Client Approved / Redacted / Internal Only. If you pick **Redacted**, you also set:
 - **Archetype** — the public-facing description (e.g. *"Tier-1 Multi-National Investment Bank"* instead of the real client name)

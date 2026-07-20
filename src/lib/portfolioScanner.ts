@@ -596,16 +596,14 @@ export class PortfolioScanner {
   }
 
   private async callAnthropicAPI(prompt: string, apiKey: string): Promise<Record<string, any>> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiBase = window.location.origin;
+    const res = await fetch(`${apiBase}/api/classify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-5-20250514', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, apiKey }),
     });
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`);
-    const data = await res.json() as { content: { type: string; text: string }[] };
-    let text = data.content[0].text.trim();
-    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(text);
+    if (!res.ok) throw new Error(`Classification API error: ${res.status}`);
+    return res.json();
   }
 
   async supabaseLogin(supabaseUrl: string, anonKey: string, email: string, password: string): Promise<string | null> {
