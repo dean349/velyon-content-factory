@@ -326,7 +326,7 @@ export const FactoryView = () => {
       const saved = localStorage.getItem('velyon_app_credentials');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return { githubToken: '', anthropicApiKey: '', vercelBypass: '' };
+    return { githubToken: '', anthropicApiKey: '', vercelBypass: '', vercelToken: '', supabaseUrl: '', supabaseAnonKey: '', supabaseEmail: '', supabasePassword: '' };
   });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
@@ -627,7 +627,12 @@ export const FactoryView = () => {
       return;
     }
     try {
-      const result = await portfolioScanner.autoClassify(item, appCredentials.anthropicApiKey, appCredentials.vercelBypass || undefined);
+      const result = await portfolioScanner.autoClassify(
+        item, appCredentials.anthropicApiKey,
+        appCredentials.vercelBypass || undefined, appCredentials.vercelToken || undefined,
+        appCredentials.supabaseUrl || undefined, appCredentials.supabaseAnonKey || undefined,
+        appCredentials.supabaseEmail || undefined, appCredentials.supabasePassword || undefined,
+      );
       setPortfolioItems(prev => prev.map(p => p.id === item.id ? { ...p, aiClassification: result } : p));
       setSelectedPortfolioItem(prev => prev?.id === item.id ? { ...prev, aiClassification: result } : prev);
     } catch (e) { alert(`Auto-classify failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }

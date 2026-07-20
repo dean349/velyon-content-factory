@@ -602,7 +602,31 @@ export class PortfolioScanner {
     return JSON.parse(text);
   }
 
-  async autoClassify(item: DiscoveredItem, anthropicApiKey: string, vercelBypass?: string): Promise<AIClassification> {
+  async supabaseLogin(supabaseUrl: string, anonKey: string, email: string, password: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': anonKey },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async autoClassify(
+    item: DiscoveredItem,
+    anthropicApiKey: string,
+    middlewareUser?: string,
+    middlewarePass?: string,
+    supabaseUrl?: string,
+    supabaseAnonKey?: string,
+    supabaseEmail?: string,
+    supabasePassword?: string,
+  ): Promise<AIClassification> {
     const taxonomy = `AI CATEGORIES (pick all that apply): agentic-ai, generative-ai, predictive-ai, computer-vision, nlp, recommendation, anomaly-detection, speech-audio, custom-models, data-mlops, edge-ai, knowledge-reasoning
 ARCHITECTURE PATTERNS (pick one): multi-agent, rag-pipeline, single-agent-tools, model-pipeline, fine-tuned-model, api-orchestration, real-time-streaming, batch-processing, hybrid-complex
 AUTONOMY LEVELS (pick one): fully-autonomous, human-in-the-loop, human-approval-required, advisory-only`;
@@ -612,8 +636,23 @@ AUTONOMY LEVELS (pick one): fully-autonomous, human-in-the-loop, human-approval-
     try {
       if (!url) throw new Error('No URL');
       const headers: Record<string, string> = {};
-      if (vercelBypass) headers['x-vercel-protection-bypass'] = vercelBypass;
-      const res = await fetch(url, { headers });
+
+      // Try middleware Basic Auth first
+      if (middlewareUser && middlewarePass) {
+        headers['Authorization'] = `Basic ${btoa(`${middlewareUser}:${middlewarePass}`)}`;
+      }
+
+      let res = await fetch(url, { headers });
+
+      // If middleware auth failed or wasn't provided, try Supabase Auth
+      if ((!res.ok || res.redirected) && supabaseUrl && supabaseAnonKey && supabaseEmail && supabasePassword) {
+        const token = await this.supabaseLogin(supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword);
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          res = await fetch(url, { headers });
+        }
+      }
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       html = await res.text();
     } catch {
