@@ -643,27 +643,26 @@ export class PortfolioScanner {
       }
     } catch {}
 
-    // Step 2: Call the server-side API route for Supabase Auth
-    if (supabaseUrl && supabaseAnonKey && supabaseEmail && supabasePassword) {
-      try {
-        const apiBase = window.location.origin;
-        const resp = await fetch(`${apiBase}/api/scrape`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            targetUrl: url,
-            supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword,
-            middlewareUser, middlewarePass,
-          }),
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.html && data.authMethod !== 'supabase-failed' && data.authMethod !== 'none') {
-            return data.html;
-          }
+    // Step 2: Call the server-side API route (handles middleware + Supabase auth)
+    // Always try this — browser fetches are blocked by CORS on cross-origin protected sites
+    try {
+      const apiBase = window.location.origin;
+      const resp = await fetch(`${apiBase}/api/scrape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUrl: url,
+          supabaseUrl, supabaseAnonKey, supabaseEmail, supabasePassword,
+          middlewareUser, middlewarePass,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.html && data.authMethod !== 'supabase-failed' && data.authMethod !== 'none') {
+          return data.html;
         }
-      } catch {}
-    }
+      }
+    } catch {}
 
     // Step 3: Fallback to metadata
     return '';
@@ -727,7 +726,8 @@ Return JSON with EXACTLY these fields:
         source: 'auto-classify-url',
         lastClassifiedAt: new Date().toISOString(),
       };
-    } catch {
+    } catch (error) {
+      console.error('[autoClassify] FALLBACK TRIGGERED:', error instanceof Error ? error.message : JSON.stringify(error));
       const scores = signals.keywordScores;
       const top = Object.entries(scores).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
       return {
