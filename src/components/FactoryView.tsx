@@ -678,7 +678,7 @@ export const FactoryView = () => {
   const handleStartSynthesis = () => {
     setSynthesisState('processing');
     setProgressStage(0);
-    setLogs(["[SYSTEM]: Initializing Velyon Content Factory Pipeline..."]);
+    setLogs(["[SYSTEM]: Initializing Velyon Portfolio Forge Pipeline..."]);
     
     const customIngestLogs = [];
     if (hasScrapedResult) {
@@ -758,12 +758,12 @@ export const FactoryView = () => {
 
   // Generate downloadable MD contents dynamically
   const handleDownloadMarkdown = () => {
-    const markdownContent = `# Velyon AI Content Factory Report\n\n` +
+    const markdownContent = `# Velyon Portfolio Forge Report\n\n` +
       `**Client Name**: ${clientName}\n` +
       `**Sector**: ${industry}\n` +
       `**Core Metric**: ${metricValue}\n\n` +
       `## 1. Executive Summary\n` +
-      `The Velyon Content Factory has processed raw materials (including client testimonials, file specifications, and design guides) to craft a world-class ${selectedTopic.toUpperCase()} package.\n\n` +
+      `The Velyon Portfolio Forge has processed raw materials (including client testimonials, file specifications, and design guides) to craft a world-class ${selectedTopic.toUpperCase()} package.\n\n` +
       `## 2. Multi-Modal Pipeline Outputs\n` +
       `- **Generated UI**: Fully animated React/Tailwind wrapper mapped via 21st.dev blueprints.\n` +
       `- **Voice Overlay**: Generated voice over narration using ElevenLabs with stability factor ${stabilityVal}%.\n` +
@@ -843,7 +843,7 @@ export const FactoryView = () => {
           <Sparkles size={12} className="animate-pulse" />
           <span>Velyon.io Strategy & Synthesis Hub</span>
         </div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-white font-sans">Velyon Website Content Factory</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight text-white font-sans">Velyon Portfolio Forge</h2>
         <p className="text-slate-400 text-sm mt-1">
           Streamline sitemaps, NDAs, product assets, and 90-day timelines. Build multi-modal code snippets, podcasts, and premium case studies interactively.
         </p>
@@ -1017,7 +1017,7 @@ export const FactoryView = () => {
                     className="w-full h-12 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 disabled:from-slate-800 disabled:to-slate-800 disabled:opacity-50 text-white font-bold text-sm rounded-2xl transition-all shadow-xl shadow-indigo-950/30 flex items-center justify-center gap-2"
                   >
                     <Sparkles size={16} />
-                    <span>⚡ Synthesize via Velyon Content Factory</span>
+                    <span>⚡ Synthesize via Velyon Portfolio Forge</span>
                   </button>
                 </div>
               </div>
@@ -2077,7 +2077,7 @@ export const FactoryView = () => {
                                 <div className={`space-y-4 mx-auto transition-all duration-300 ${wireframeFidelity === 'mobile' ? 'max-w-[280px] w-full border-x border-white/10 px-4' : 'w-full'}`}>
                                   {/* Top Navigation placeholder */}
                                   <div className="border border-white/5 bg-white/[0.01] p-2.5 rounded-xl flex justify-between items-center text-[10px] text-slate-500 font-mono">
-                                    <span>[LOGO] Velyon Website Content Factory</span>
+                                    <span>[LOGO] Velyon Portfolio Forge</span>
                                     {wireframeFidelity === 'desktop' ? (
                                       <div className="flex gap-3">
                                         <span>Products</span>
@@ -2518,7 +2518,7 @@ export const FactoryView = () => {
                         </div>
 
                         <div className="bg-black/50 border border-white/5 rounded-2xl p-6 font-sans text-xs text-slate-300 space-y-4 max-h-80 overflow-y-auto leading-relaxed">
-                          <h1 className="text-base font-bold text-white border-b border-white/5 pb-2">Velyon Content Factory Synthesis</h1>
+                          <h1 className="text-base font-bold text-white border-b border-white/5 pb-2">Velyon Portfolio Forge Synthesis</h1>
                           <div className="flex flex-wrap gap-4 text-slate-400 text-[10px] border-b border-white/5 pb-2">
                             <span><strong>Client:</strong> {clientName}</span>
                             <span><strong>Sector:</strong> {industry}</span>
@@ -2655,7 +2655,7 @@ export const FactoryView = () => {
                                   onClick={() => {
                                     const jsonPayload = JSON.stringify({
                                       notebook_metadata: {
-                                        source: "Velyon Website Content Factory",
+                                        source: "Velyon Portfolio Forge",
                                         client_name: clientName,
                                         industry: industry,
                                         primary_metric: metricValue,
@@ -2718,7 +2718,7 @@ export const FactoryView = () => {
                                 <pre className="text-rose-300 leading-relaxed">
 {`{
   "notebook_metadata": {
-    "source": "Velyon Website Content Factory",
+    "source": "Velyon Portfolio Forge",
     "client": "${clientName}",
     "industry": "${industry}",
     "conversion_metric": "${metricValue}",
@@ -2811,7 +2811,7 @@ export const FactoryView = () => {
                                   {
                                     time: "0:08 - 0:10",
                                     shot: "Fast Dolly-Out Zoom",
-                                    prompt: `Rapid camera pull back through a series of glowing modular screens showing the Velyon Content Factory dashboard. The screens slide in smoothly. End on high-contrast central title "Velyon Website Content Factory" as a massive logo overlay.`,
+                                    prompt: `Rapid camera pull back through a series of glowing modular screens showing the Velyon Portfolio Forge dashboard. The screens slide in smoothly. End on high-contrast central title "Velyon Portfolio Forge" as a massive logo overlay.`,
                                     voice: `Synthesize your assets. Deploy instantly.`
                                   }
                                 ].map((item, index) => (
@@ -2886,7 +2886,7 @@ export const FactoryView = () => {
                                           shot_index: 4,
                                           timecode: "0:08 - 0:10",
                                           shot_type: "Fast Dolly-Out Zoom",
-                                          prompt_instruction: `Rapid camera pull back through a series of glowing modular screens showing the Velyon Content Factory dashboard. The screens slide in smoothly. End on high-contrast central title "Velyon Website Content Factory" as a massive logo overlay.`,
+                                          prompt_instruction: `Rapid camera pull back through a series of glowing modular screens showing the Velyon Portfolio Forge dashboard. The screens slide in smoothly. End on high-contrast central title "Velyon Portfolio Forge" as a massive logo overlay.`,
                                           narration_script: "Synthesize your assets. Deploy instantly."
                                         }
                                       ]

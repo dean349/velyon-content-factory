@@ -445,18 +445,18 @@ const CONVERSATION_DATA: ConversationMessage[] = [
   {
     id: 13,
     role: 'user',
-    topic: 'Velyon AI Content Factory & UI Ecosystems',
+    topic: 'Velyon Portfolio Forge & UI Ecosystems',
     content: "It also needs other options for multi-modal capabilities for producing output, whether it be md files, .pdf, images, assets, jpegs, pngs. Export to Google notebookLM to create slideshows and videos. Video generation can also be done using Higgsfield, HeyGen, Framer Motion, and 11labs using the Velyon AI content factory. Needs to be a selection for each topic, whether it is a case study that we are trying to make or prepare assets for a website. A user can input whether they already have a video they want to use, a file, an image, text, or testimonials, and so on and so forth. Give me some more of your recommendations. Also what about the UI and UX, and using 21st.dev and the magic MCP server? The frontend should look really nice and premium. What framework would we use there?",
     searchText: "multi-modal capabilities producing output md pdf images assets jpegs pngs Export to Google notebookLM slideshows videos Video generation Higgsfield HeyGen Framer Motion 11labs Velyon AI content factory case study website assets video file image text testimonials 21st.dev magic MCP server premium frontend framework"
   },
   {
     id: 14,
     role: 'assistant',
-    topic: 'Velyon AI Content Factory & UI Ecosystems',
+    topic: 'Velyon Portfolio Forge & UI Ecosystems',
     content: (
       <div className="space-y-6">
         <p className="text-slate-300 leading-relaxed">
-          The concept of the <strong>Velyon AI Content Factory</strong> is a masterpiece of multi-modal engineering: a single centralized dashboard that absorbs arbitrary raw customer ingredients (testimonials, PDFs, raw videos, images) and routes them into structured campaign pipelines (Case Studies, Web Assets, Interactive Demos).
+          The concept of the <strong>Velyon Portfolio Forge</strong> is a masterpiece of multi-modal engineering: a single centralized dashboard that absorbs arbitrary raw customer ingredients (testimonials, PDFs, raw videos, images) and routes them into structured campaign pipelines (Case Studies, Web Assets, Interactive Demos).
         </p>
 
         <div className="border border-indigo-500/15 bg-indigo-500/[0.02] p-5 rounded-2xl space-y-4">
@@ -542,7 +542,7 @@ const CONVERSATION_DATA: ConversationMessage[] = [
         </div>
       </div>
     ),
-    searchText: "Velyon AI Content Factory multi-modal output Google NotebookLM Slides Higgsfield HeyGen Framer Motion ElevenLabs Eleven Labs 11labs case study website assets Next.js 21st.dev magic MCP server Model Context Protocol"
+    searchText: "Velyon Portfolio Forge multi-modal output Google NotebookLM Slides Higgsfield HeyGen Framer Motion ElevenLabs Eleven Labs 11labs case study website assets Next.js 21st.dev magic MCP server Model Context Protocol"
   }
 ];
 
@@ -1622,7 +1622,7 @@ export default function App() {
               {[
                 { key: 'chat', label: 'Chat Transcript' },
                 { key: 'dashboard', label: 'Architecture Dashboard' },
-                { key: 'factory', label: '⚡ Velyon Website Content Factory' },
+                { key: 'factory', label: '⚡ Velyon Portfolio Forge' },
                 { key: 'assets', label: 'Assets' }
               ].map((tab) => {
                 const isSelected = activeTab === tab.key;
