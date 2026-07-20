@@ -488,6 +488,13 @@ export class PortfolioScanner {
       discoveryMethod: 'manual-entry',
       discoveryStatus: 'discovered',
       sourceType: catalogType === 'product' ? 'product' : 'webapp',
+      aiClassification: {
+        primaryCategories: [],
+        architecturePattern: '',
+        modelsUsed: [],
+        autonomyLevel: '',
+        methodologies: []
+      },
       ...(catalogType === 'product' ? {
         productProfile: {
           deliveryModel: [],
@@ -592,7 +599,8 @@ export class PortfolioScanner {
         source: partial.discoveryMethod || 'manual-entry',
         changes: []
       }],
-      productProfile: partial.productProfile
+      productProfile: partial.productProfile,
+      aiClassification: partial.aiClassification
     };
 
     this.items.set(id, item);

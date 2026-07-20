@@ -24,6 +24,7 @@ import { PostLaunchTrackingSection } from './portfolio/gaps/PostLaunchTrackingSe
 import { CaseStudyTemplateSection } from './portfolio/gaps/CaseStudyTemplateSection';
 import { ExportConfigSection } from './portfolio/gaps/ExportConfigSection';
 import { ProductProfileSection } from './portfolio/gaps/ProductProfileSection';
+import { AIMethodologySection } from './portfolio/gaps/AIMethodologySection';
 
 // ============================================================
 // MODULE-LEVEL HELPERS (used by sub-panels defined outside the main component)
@@ -171,25 +172,6 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
 
   const removeAsset = (id: string) => {
     updateField('assets', localItem.assets.filter((a: PortfolioAsset) => a.id !== id));
-  };
-
-  const addTeamMember = () => {
-    const newMember: TeamMember = {
-      id: `team-${Date.now()}`,
-      name: '',
-      role: '',
-      isVelyon: true,
-      contribution: ''
-    };
-    updateField('team', [...localItem.team, newMember]);
-  };
-
-  const updateTeamMember = (id: string, field: keyof TeamMember, value: any) => {
-    updateField('team', localItem.team.map((m: TeamMember) => m.id === id ? { ...m, [field]: value } : m));
-  };
-
-  const removeTeamMember = (id: string) => {
-    updateField('team', localItem.team.filter((m: TeamMember) => m.id !== id));
   };
 
   const addStackEntry = (category: keyof DiscoveredItem['techStack']) => {
@@ -357,7 +339,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
           { id: 'overview', label: 'Overview', icon: <FileText size={12} /> },
           { id: 'metrics', label: 'Metrics', icon: <Award size={12} /> },
           { id: 'assets', label: 'Assets', icon: <Image size={12} /> },
-          { id: 'team', label: 'Team', icon: <Users size={12} /> },
+          { id: 'ai', label: 'AI Methodology', icon: <Brain size={12} /> },
           { id: 'techstack', label: 'Tech Stack', icon: <Code size={12} /> },
           { id: 'redaction', label: 'Redaction', icon: <Shield size={12} /> },
           { id: 'content', label: 'Content Hints', icon: <Target size={12} /> },
@@ -383,7 +365,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
         {editMode === 'overview' && <OverviewPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} allItems={allItems} />}
         {editMode === 'metrics' && <MetricsPanel item={localItem} updateField={updateField} addMetric={addMetric} updateMetric={updateMetric} removeMetric={removeMetric} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'assets' && <AssetsPanel item={localItem} updateField={updateField} addAsset={addAsset} updateAsset={updateAsset} removeAsset={removeAsset} />}
-        {editMode === 'team' && <TeamPanel item={localItem} updateField={updateField} addTeamMember={addTeamMember} updateTeamMember={updateTeamMember} removeTeamMember={removeTeamMember} />}
+        {editMode === 'ai' && <AIMethodologySection item={localItem} data={localItem.aiClassification} onChange={v => updateField('aiClassification', v)} />}
         {editMode === 'techstack' && <TechStackPanel item={localItem} updateField={updateField} addStackEntry={addStackEntry} updateStackEntry={updateStackEntry} removeStackEntry={removeStackEntry} getConfidenceColor={getConfidenceColor} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'redaction' && <RedactionPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'content' && <ContentHintsPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
@@ -604,55 +586,6 @@ const AssetsPanel: React.FC<{ item: DiscoveredItem; updateField: any; addAsset: 
             <div className="flex items-center gap-2 text-[10px] text-slate-500">
               <span className="px-1.5 py-0.5 bg-white/5 rounded">{asset.generatedBy || 'user-upload'}</span>
               {asset.generatedAt && <span>{new Date(asset.generatedAt).toLocaleDateString()}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
-
-const TeamPanel: React.FC<{ item: DiscoveredItem; updateField: any; addTeamMember: any; updateTeamMember: any; removeTeamMember: any }> = ({ 
-  item, updateField, addTeamMember, updateTeamMember, removeTeamMember 
-}) => (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between">
-      <h3 className="font-bold text-slate-100">Team Members</h3>
-      <button onClick={addTeamMember} className="px-3 py-1.5 bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-xl hover:bg-rose-500/30 flex items-center gap-1.5"><Plus size={12} /> Add Member</button>
-    </div>
-
-    {item.team.length === 0 ? (
-      <div className="text-center py-12 text-slate-500">
-        <Users size={48} className="mx-auto mb-4 opacity-30" />
-        <p>No team members added.</p>
-      </div>
-    ) : (
-      <div className="space-y-4">
-        {item.team.map((member, index) => (
-          <div key={member.id} className="bg-black/30 border border-white/5 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-100">{member.name || `Member ${index + 1}`}</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => removeTeamMember(member.id)} className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12} /></button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Field label="Name" value={member.name} onChange={v => updateTeamMember(member.id, 'name', v)} size="sm" />
-              <Field label="Role" value={member.role} onChange={v => updateTeamMember(member.id, 'role', v)} size="sm" />
-              <Field label="Contribution" value={member.contribution} onChange={v => updateTeamMember(member.id, 'contribution', v)} size="sm" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Field label="Avatar URL" value={member.avatar || ''} onChange={v => updateTeamMember(member.id, 'avatar', v)} placeholder="https://..." size="sm" />
-              <Field label="LinkedIn" value={member.linkedin || ''} onChange={v => updateTeamMember(member.id, 'linkedin', v)} placeholder="https://linkedin.com/in/..." size="sm" />
-              <Field label="Email" value={member.email || ''} onChange={v => updateTeamMember(member.id, 'email', v)} placeholder="name@velyon.io" size="sm" />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={member.isVelyon} onChange={e => updateTeamMember(member.id, 'isVelyon', e.target.checked)} className="w-4 h-4 accent-rose-500" />
-                <span className="text-slate-300">Velyon Team</span>
-              </label>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Hours Invested" value={member.hoursInvested?.toString() || ''} onChange={v => updateTeamMember(member.id, 'hoursInvested', parseInt(v) || undefined)} type="number" size="sm" />
-              <Field label="Period" value={member.period?.start || ''} onChange={v => updateTeamMember(member.id, 'period', { ...member.period, start: v })} placeholder="Start date (ISO)" size="sm" />
             </div>
           </div>
         ))}

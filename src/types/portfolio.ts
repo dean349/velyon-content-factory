@@ -200,6 +200,10 @@ export interface DiscoveredItem {
 
   // Gap 13: Velyon Product Profile (only meaningful when catalogType === 'product')
   productProfile?: ProductProfile;
+
+  // Gap 14: AI Classification — what type of AI methodology, architecture, and tools this item uses.
+  // Replaces the Team tab which was always the same on every entry.
+  aiClassification?: AIClassification;
 }
 
 export interface TechStack {
@@ -583,4 +587,27 @@ export interface ProductProfile {
   targetUseCases: string[];
   keyCapabilities: string[];
   internalOnly: boolean; // true = not yet ready to appear in the public /products catalog
+}
+
+// AI Classification — what type of AI methodology, architecture, and tools the item uses.
+// Replaces the Team tab (which was always "Dean + AI agents" on every entry and carried zero signal).
+export type AICategory =
+  | 'agentic-ai' | 'generative-ai' | 'predictive-ai' | 'computer-vision'
+  | 'nlp' | 'recommendation' | 'anomaly-detection' | 'speech-audio'
+  | 'custom-models' | 'data-mlops' | 'edge-ai' | 'knowledge-reasoning';
+
+export type AIArchitecture =
+  | 'multi-agent' | 'rag-pipeline' | 'single-agent-tools' | 'model-pipeline'
+  | 'fine-tuned-model' | 'api-orchestration' | 'real-time-streaming'
+  | 'batch-processing' | 'hybrid-complex';
+
+export type AIAutonomyLevel =
+  | 'fully-autonomous' | 'human-in-the-loop' | 'human-approval-required' | 'advisory-only';
+
+export interface AIClassification {
+  primaryCategories: AICategory[];
+  architecturePattern: AIArchitecture | '';
+  modelsUsed: string[];
+  autonomyLevel: AIAutonomyLevel | '';
+  methodologies: string[];
 }
