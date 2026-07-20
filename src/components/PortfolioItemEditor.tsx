@@ -286,6 +286,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
               <Save size={14} /> Save
             </button>
           </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
