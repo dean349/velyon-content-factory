@@ -75,12 +75,14 @@ interface PortfolioItemEditorProps {
   onSave: (item: DiscoveredItem) => void;
   onClose: () => void;
   allItems: DiscoveredItem[];
-  onAddComment: (itemId: string, comment: Omit<DiscoveryComment, 'id' | 'itemId' | 'createdAt' | 'resolved'>) => DiscoveryComment;
-  onResolveComment: (itemId: string, commentId: string, resolvedBy: string) => boolean;
+  onAddComment: any;
+  onResolveComment: any;
+  onAutoClassify?: (item: DiscoveredItem) => void;
+  onDeepScanGitHub?: (item: DiscoveredItem) => void;
 }
 
 export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({ 
-  item, onSave, onClose, allItems, onAddComment, onResolveComment 
+  item, onSave, onClose, allItems, onAddComment, onResolveComment, onAutoClassify, onDeepScanGitHub
 }) => {
   const [editMode, setEditMode] = useState<string>('overview');
   const [localItem, setLocalItem] = useState<DiscoveredItem>(item);
@@ -365,7 +367,7 @@ export const PortfolioItemEditor: React.FC<PortfolioItemEditorProps> = ({
         {editMode === 'overview' && <OverviewPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} allItems={allItems} />}
         {editMode === 'metrics' && <MetricsPanel item={localItem} updateField={updateField} addMetric={addMetric} updateMetric={updateMetric} removeMetric={removeMetric} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'assets' && <AssetsPanel item={localItem} updateField={updateField} addAsset={addAsset} updateAsset={updateAsset} removeAsset={removeAsset} />}
-        {editMode === 'ai' && <AIMethodologySection item={localItem} data={localItem.aiClassification} onChange={v => updateField('aiClassification', v)} />}
+        {editMode === 'ai' && <AIMethodologySection item={localItem} data={localItem.aiClassification} onChange={v => updateField('aiClassification', v)} onAutoClassify={onAutoClassify ? () => onAutoClassify(localItem) : undefined} onDeepScanGitHub={onDeepScanGitHub ? () => onDeepScanGitHub(localItem) : undefined} />}
         {editMode === 'techstack' && <TechStackPanel item={localItem} updateField={updateField} addStackEntry={addStackEntry} updateStackEntry={updateStackEntry} removeStackEntry={removeStackEntry} getConfidenceColor={getConfidenceColor} onAddComment={showCommentModal ? onAddComment : undefined} />}
         {editMode === 'redaction' && <RedactionPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}
         {editMode === 'content' && <ContentHintsPanel item={localItem} updateField={updateField} updateNestedField={updateNestedField} />}

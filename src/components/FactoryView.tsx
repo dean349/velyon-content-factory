@@ -33,6 +33,7 @@ import {
   Globe,
   UploadCloud,
   Code,
+  Key,
   Database
 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ import { SupabaseDropzone } from './SupabaseDropzone';
 import { PortfolioItemEditor } from './PortfolioItemEditor';
 import { ErrorBoundary } from './ErrorBoundary';
 import { portfolioScanner } from '../lib/portfolioScanner';
+import { CredentialsModal, AppCredentials } from './CredentialsModal';
 import { DiscoveredItem, DiscoverySourceConfig } from '../types/portfolio';
 import { Box, Search, Zap, Edit3, Triangle, GitBranch, ArrowUpRight, Puzzle } from 'lucide-react';
 
@@ -312,6 +314,9 @@ export const FactoryView = () => {
   });
   const [batchGenerateItems, setBatchGenerateItems] = useState<string[]>([]);
   const [batchOutputChannels, setBatchOutputChannels] = useState<Record<string, string[]>>({});
+
+  const [appCredentials, setAppCredentials] = useState<AppCredentials>({ githubToken: '', anthropicApiKey: '', vercelBypass: '' });
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
   // Custom scraped data
   const [customBrandVoice, setCustomBrandVoice] = useState<string>("Highly technical, enterprise-grade, transparent. Focuses on hard pipeline metrics and validator feedback loops.");
@@ -591,6 +596,33 @@ export const FactoryView = () => {
     setPortfolioItems(prev => [...prev, item]);
     setCatalogFilter(catalogType);
     setSelectedPortfolioItem(item);
+  };
+
+  const handleAutoClassify = async (item: DiscoveredItem) => {
+    if (!appCredentials.anthropicApiKey) {
+      alert('Please set your Anthropic API key in Credentials first.');
+      setShowCredentialsModal(true);
+      return;
+    }
+    try {
+      const result = await portfolioScanner.autoClassify(item, appCredentials.anthropicApiKey, appCredentials.vercelBypass || undefined);
+      setPortfolioItems(prev => prev.map(p => p.id === item.id ? { ...p, aiClassification: result } : p));
+      setSelectedPortfolioItem(prev => prev?.id === item.id ? { ...prev, aiClassification: result } : prev);
+    } catch (e) { alert(`Auto-classify failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
+  };
+
+  const handleDeepScanGitHub = async (item: DiscoveredItem) => {
+    if (!appCredentials.githubToken || !appCredentials.anthropicApiKey) {
+      alert('Please set both your GitHub token and Anthropic API key in Credentials first.');
+      setShowCredentialsModal(true);
+      return;
+    }
+    if (!item.repoUrl) { alert('This item has no GitHub repo URL to scan.'); return; }
+    try {
+      const result = await portfolioScanner.deepScanGitHub(item.repoUrl, appCredentials.githubToken, appCredentials.anthropicApiKey);
+      setPortfolioItems(prev => prev.map(p => p.id === item.id ? { ...p, aiClassification: result } : p));
+      setSelectedPortfolioItem(prev => prev?.id === item.id ? { ...prev, aiClassification: result } : prev);
+    } catch (e) { alert(`Deep scan failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
   };
 
   const handleSavePortfolioItem = (item: DiscoveredItem) => {
@@ -1452,6 +1484,8 @@ export const FactoryView = () => {
                               allItems={portfolioItems}
                               onAddComment={portfolioScanner.addComment.bind(portfolioScanner)}
                               onResolveComment={portfolioScanner.resolveComment.bind(portfolioScanner)}
+                              onAutoClassify={handleAutoClassify}
+                              onDeepScanGitHub={handleDeepScanGitHub}
                             />
                           </ErrorBoundary>
                         ) : (
@@ -1483,6 +1517,7 @@ export const FactoryView = () => {
                             <div className="flex items-center gap-2">
                               <button onClick={() => handleAddManualEntry('case-study')} className="px-2.5 py-1 bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[10px] font-bold rounded-lg hover:bg-indigo-500/30 flex items-center gap-1"><PlusCircle size={10} /> Case Study</button>
                               <button onClick={() => handleAddManualEntry('product')} className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold rounded-lg hover:bg-emerald-500/30 flex items-center gap-1"><PlusCircle size={10} /> Velyon Product</button>
+                              <button onClick={() => setShowCredentialsModal(true)} className="px-2.5 py-1 bg-slate-500/10 border border-white/10 text-slate-400 text-[10px] font-bold rounded-lg hover:bg-white/5 flex items-center gap-1"><Key size={10} /> Credentials</button>
                             </div>
                           </div>
                           <div className="space-y-2">
@@ -3350,6 +3385,10 @@ export const FactoryView = () => {
           </div>
 
         </div>
+      )}
+
+      {showCredentialsModal && (
+        <CredentialsModal credentials={appCredentials} onSave={setAppCredentials} onClose={() => setShowCredentialsModal(false)} />
       )}
 
     </div>

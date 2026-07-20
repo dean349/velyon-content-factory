@@ -610,4 +610,7 @@ export interface AIClassification {
   modelsUsed: string[];
   autonomyLevel: AIAutonomyLevel | '';
   methodologies: string[];
+  confidence?: number;
+  source?: 'manual' | 'auto-classify-url' | 'deep-scan-github';
+  lastClassifiedAt?: string;
 }

@@ -14,7 +14,8 @@ import {
   EnrichmentEntry,
   FieldGenerationRequest,
   DiscoveryStatus,
-  CatalogType
+  CatalogType,
+  AIClassification
 } from '../types/portfolio';
 
 export class PortfolioScanner {
@@ -535,6 +536,219 @@ export class PortfolioScanner {
       if (sameSet) return item;
       return { ...item, relatedCases: derivedCases };
     });
+  }
+
+  // ============================================================
+  // AI AUTO-CLASSIFICATION (Tier 1-3)
+  // ============================================================
+
+  extractAISignalsFromHTML(html: string): { frameworks: string[]; aiProviders: string[]; aiLibraries: string[]; keywordScores: Record<string, number>; fullText: string } {
+    const frameworks: string[] = [];
+    for (const [name, pattern] of Object.entries({ React: /react/i, Next: /next(?:\.js|js)?/i, Vue: /vue(?:\.js)?/i, Angular: /angular/i, Svelte: /svelte/i })) {
+      if (pattern.test(html)) frameworks.push(name);
+    }
+
+    const aiProviders: string[] = [];
+    for (const [name, pattern] of Object.entries({ openai: /openai/i, anthropic: /anthropic/i, claude: /claude/i, gemini: /gemini/i, deepmind: /deepmind/i })) {
+      if (pattern.test(html)) aiProviders.push(name);
+    }
+
+    const aiLibraries: string[] = [];
+    const scriptSrcRegex = /<script[^>]+src=["']([^"']+)["']/gi;
+    let match: RegExpExecArray | null;
+    const libraryPatterns: Record<string, RegExp> = { langchain: /langchain/i, llamaindex: /llamaindex/i, openai: /openai/i, huggingface: /huggingface/i, crewai: /crewai/i };
+    while ((match = scriptSrcRegex.exec(html)) !== null) {
+      for (const [name, pattern] of Object.entries(libraryPatterns)) {
+        if (pattern.test(match[1]) && !aiLibraries.includes(name)) aiLibraries.push(name);
+      }
+    }
+
+    const fullText = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
+    const lowerText = fullText.toLowerCase();
+
+    const keywordCategories: Record<string, string[]> = {
+      'agentic-ai': ['agent', 'agentic'], 'generative-ai': ['generate', 'generative', 'create'],
+      'predictive-ai': ['predict', 'forecast', 'score'], 'computer-vision': ['vision', 'image', 'detect', 'ocr'],
+      'nlp': ['sentiment', 'nlp', 'summarize', 'entity'], 'recommendation': ['recommend', 'rank', 'personalize'],
+      'anomaly-detection': ['anomaly', 'fraud', 'outlier'], 'speech-audio': ['speech', 'audio', 'transcribe', 'voice'],
+      'custom-models': ['fine-tune', 'train', 'custom model'], 'data-mlops': ['pipeline', 'feature', 'drift', 'mlops'],
+      'edge-ai': ['edge', 'iot', 'embedded', 'on-device'], 'knowledge-reasoning': ['knowledge graph', 'reasoning', 'ontology'],
+    };
+
+    const keywordScores: Record<string, number> = {};
+    for (const [category, keywords] of Object.entries(keywordCategories)) {
+      let count = 0;
+      for (const kw of keywords) {
+        const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = lowerText.match(re);
+        if (matches) count += matches.length;
+      }
+      keywordScores[category] = count;
+    }
+
+    return { frameworks, aiProviders, aiLibraries, keywordScores, fullText };
+  }
+
+  private async callAnthropicAPI(prompt: string, apiKey: string): Promise<Record<string, any>> {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-5-20250514', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+    });
+    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`);
+    const data = await res.json() as { content: { type: string; text: string }[] };
+    let text = data.content[0].text.trim();
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    return JSON.parse(text);
+  }
+
+  async autoClassify(item: DiscoveredItem, anthropicApiKey: string, vercelBypass?: string): Promise<AIClassification> {
+    const taxonomy = `AI CATEGORIES (pick all that apply): agentic-ai, generative-ai, predictive-ai, computer-vision, nlp, recommendation, anomaly-detection, speech-audio, custom-models, data-mlops, edge-ai, knowledge-reasoning
+ARCHITECTURE PATTERNS (pick one): multi-agent, rag-pipeline, single-agent-tools, model-pipeline, fine-tuned-model, api-orchestration, real-time-streaming, batch-processing, hybrid-complex
+AUTONOMY LEVELS (pick one): fully-autonomous, human-in-the-loop, human-approval-required, advisory-only`;
+
+    let html = '';
+    const url = item.deployUrl || item.sourceUrl;
+    try {
+      if (!url) throw new Error('No URL');
+      const headers: Record<string, string> = {};
+      if (vercelBypass) headers['x-vercel-protection-bypass'] = vercelBypass;
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      html = await res.text();
+    } catch {
+      html = [item.name, item.tagline, item.description, ...(item.capabilityTags || [])].filter(Boolean).join(' ');
+    }
+
+    const signals = this.extractAISignalsFromHTML(html);
+
+    try {
+      const prompt = `You are an AI classification expert. Classify this project into the Velyon AI taxonomy. Return ONLY valid JSON.
+
+${taxonomy}
+
+DETECTED SIGNALS:
+- Frameworks: ${JSON.stringify(signals.frameworks)}
+- AI Providers: ${JSON.stringify(signals.aiProviders)}
+- AI Libraries: ${JSON.stringify(signals.aiLibraries)}
+- Keyword Scores: ${JSON.stringify(signals.keywordScores)}
+- Project: ${item.name} — ${item.tagline} — ${item.description}
+
+PAGE TEXT (first 8000 chars):
+${signals.fullText.slice(0, 8000)}
+
+Return JSON with EXACTLY these fields:
+{
+  "primaryCategories": ["id1", "id2"],
+  "architecturePattern": "id",
+  "modelsUsed": ["Model Name 1", "Model Name 2"],
+  "autonomyLevel": "id",
+  "methodologies": ["tag1", "tag2"],
+  "confidence": 0.85
+}`;
+
+      const parsed = await this.callAnthropicAPI(prompt, anthropicApiKey);
+      return {
+        primaryCategories: Array.isArray(parsed.primaryCategories) ? parsed.primaryCategories : [],
+        architecturePattern: parsed.architecturePattern || '',
+        modelsUsed: Array.isArray(parsed.modelsUsed) ? parsed.modelsUsed : [],
+        autonomyLevel: parsed.autonomyLevel || '',
+        methodologies: Array.isArray(parsed.methodologies) ? parsed.methodologies : [],
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+        source: 'auto-classify-url',
+        lastClassifiedAt: new Date().toISOString(),
+      };
+    } catch {
+      const scores = signals.keywordScores;
+      const top = Object.entries(scores).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      return {
+        primaryCategories: top.map(([k]) => k as any),
+        architecturePattern: '',
+        modelsUsed: signals.aiProviders,
+        autonomyLevel: '',
+        methodologies: [],
+        confidence: 0.3,
+        source: 'auto-classify-url',
+        lastClassifiedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  async deepScanGitHub(repoUrl: string, githubToken: string, anthropicApiKey: string): Promise<AIClassification> {
+    const cleaned = repoUrl.replace(/\.git$/, '').replace(/\/$/, '');
+    const parts = cleaned.match(/github\.com[/:]([^/]+)\/([^/]+)/);
+    if (!parts) throw new Error('Invalid GitHub URL');
+    const [, owner, repo] = parts;
+
+    const ghHeaders: Record<string, string> = { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'User-Agent': 'PortfolioScanner' };
+
+    const check = async (url: string) => {
+      const res = await fetch(url, { headers: ghHeaders });
+      if (res.status === 401 || res.status === 403) throw new Error('GitHub token invalid or lacks repo scope');
+      return res.ok ? res.json() : null;
+    };
+
+    const repoData = await check(`https://api.github.com/repos/${owner}/${repo}`) as any;
+    const readmeData = await check(`https://api.github.com/repos/${owner}/${repo}/readme`) as any;
+    const pkgData = await check(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`) as any;
+
+    const readmeText = readmeData?.content ? atob(readmeData.content) : '';
+    const packageJson = pkgData?.content ? atob(pkgData.content) : '';
+
+    const taxonomy = `AI CATEGORIES: agentic-ai, generative-ai, predictive-ai, computer-vision, nlp, recommendation, anomaly-detection, speech-audio, custom-models, data-mlops, edge-ai, knowledge-reasoning
+ARCHITECTURE PATTERNS: multi-agent, rag-pipeline, single-agent-tools, model-pipeline, fine-tuned-model, api-orchestration, real-time-streaming, batch-processing, hybrid-complex
+AUTONOMY LEVELS: fully-autonomous, human-in-the-loop, human-approval-required, advisory-only`;
+
+    const prompt = `You are an AI classification expert. Analyze this GitHub repository and classify it. Return ONLY valid JSON.
+
+${taxonomy}
+
+REPO: ${repoData?.full_name || `${owner}/${repo}`}
+DESCRIPTION: ${repoData?.description || 'N/A'}
+LANGUAGE: ${repoData?.language || 'N/A'}
+TOPICS: ${JSON.stringify(repoData?.topics || [])}
+
+README (first 6000 chars):
+${readmeText.slice(0, 6000)}
+
+package.json (dependencies):
+${packageJson.slice(0, 2000)}
+
+Return JSON with EXACTLY these fields:
+{
+  "primaryCategories": ["id1", "id2"],
+  "architecturePattern": "id",
+  "modelsUsed": ["Model Name 1"],
+  "autonomyLevel": "id",
+  "methodologies": ["tag1"],
+  "confidence": 0.9
+}`;
+
+    try {
+      const parsed = await this.callAnthropicAPI(prompt, anthropicApiKey);
+      return {
+        primaryCategories: Array.isArray(parsed.primaryCategories) ? parsed.primaryCategories : [],
+        architecturePattern: parsed.architecturePattern || '',
+        modelsUsed: Array.isArray(parsed.modelsUsed) ? parsed.modelsUsed : [],
+        autonomyLevel: parsed.autonomyLevel || '',
+        methodologies: Array.isArray(parsed.methodologies) ? parsed.methodologies : [],
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
+        source: 'deep-scan-github',
+        lastClassifiedAt: new Date().toISOString(),
+      };
+    } catch {
+      const topics: string[] = repoData?.topics || [];
+      return {
+        primaryCategories: topics.slice(0, 3) as any,
+        architecturePattern: '',
+        modelsUsed: [],
+        autonomyLevel: '',
+        methodologies: [],
+        confidence: 0.35,
+        source: 'deep-scan-github',
+        lastClassifiedAt: new Date().toISOString(),
+      };
+    }
   }
 
   // ============================================================
