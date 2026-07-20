@@ -306,16 +306,28 @@ export const FactoryView = () => {
   }>({ vercel: true, netlify: false, github: true, urlCrawl: true });
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryLogs, setDiscoveryLogs] = useState<string[]>([]);
-  const [discoveryConfig, setDiscoveryConfig] = useState<Partial<DiscoverySourceConfig>>({
-    vercel: { teamId: '', token: '', includePreviewDeployments: false },
-    netlify: { siteIds: [], token: '' },
-    github: { org: '', token: '', includePrivate: false, repoFilter: { topics: [], languages: [], pushedAfter: new Date(Date.now() - 365*24*60*60*1000).toISOString().split('T')[0] }, pages: { enabledOnly: true } },
-    urlCrawl: { urls: ['https://velyon.io'], followRedirects: true, maxDepth: 2, extractAssets: true }
+  const [discoveryConfig, setDiscoveryConfig] = useState<Partial<DiscoverySourceConfig>>(() => {
+    try {
+      const saved = localStorage.getItem('velyon_discovery_config');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      vercel: { teamId: '', token: '', includePreviewDeployments: false },
+      netlify: { siteIds: [], token: '' },
+      github: { org: '', token: '', includePrivate: false, repoFilter: { topics: [], languages: [], pushedAfter: new Date(Date.now() - 365*24*60*60*1000).toISOString().split('T')[0] }, pages: { enabledOnly: true } },
+      urlCrawl: { urls: ['https://velyon.io'], followRedirects: true, maxDepth: 2, extractAssets: true }
+    };
   });
   const [batchGenerateItems, setBatchGenerateItems] = useState<string[]>([]);
   const [batchOutputChannels, setBatchOutputChannels] = useState<Record<string, string[]>>({});
 
-  const [appCredentials, setAppCredentials] = useState<AppCredentials>({ githubToken: '', anthropicApiKey: '', vercelBypass: '' });
+  const [appCredentials, setAppCredentials] = useState<AppCredentials>(() => {
+    try {
+      const saved = localStorage.getItem('velyon_app_credentials');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { githubToken: '', anthropicApiKey: '', vercelBypass: '' };
+  });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
   // Custom scraped data
@@ -544,6 +556,16 @@ export const FactoryView = () => {
   useEffect(() => {
     localStorage.setItem('velyon_portfolio_items', JSON.stringify(portfolioItems));
   }, [portfolioItems]);
+
+  // Discovery Config Persistence (Vercel team ID, token, GitHub org, etc.)
+  useEffect(() => {
+    localStorage.setItem('velyon_discovery_config', JSON.stringify(discoveryConfig));
+  }, [discoveryConfig]);
+
+  // Credentials Persistence (GitHub PAT, Anthropic key, Vercel bypass — stored in browser only, never git)
+  useEffect(() => {
+    localStorage.setItem('velyon_app_credentials', JSON.stringify(appCredentials));
+  }, [appCredentials]);
 
   // Portfolio Discovery Handler
   const handleRunDiscovery = async () => {
