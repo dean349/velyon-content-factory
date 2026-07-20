@@ -24,4 +24,4 @@
     "noEmit": true
   },
   "include": ["src"],
-  "exclude": ["portfolio-scanner-module"]
+  "exclude": ["portfolio-scanner-module"]}
