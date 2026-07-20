@@ -322,11 +322,12 @@ export const FactoryView = () => {
   const [batchOutputChannels, setBatchOutputChannels] = useState<Record<string, string[]>>({});
 
   const [appCredentials, setAppCredentials] = useState<AppCredentials>(() => {
+    const defaults: AppCredentials = { githubToken: '', anthropicApiKey: '', vercelBypass: '', vercelToken: '', supabaseUrl: '', supabaseAnonKey: '', supabaseEmail: '', supabasePassword: '' };
     try {
       const saved = localStorage.getItem('velyon_app_credentials');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { ...defaults, ...JSON.parse(saved) };
     } catch {}
-    return { githubToken: '', anthropicApiKey: '', vercelBypass: '', vercelToken: '', supabaseUrl: '', supabaseAnonKey: '', supabaseEmail: '', supabasePassword: '' };
+    return defaults;
   });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
