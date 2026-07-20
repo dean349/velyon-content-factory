@@ -597,13 +597,18 @@ export class PortfolioScanner {
 
   private async callAnthropicAPI(prompt: string, apiKey: string): Promise<Record<string, any>> {
     const apiBase = window.location.origin;
-    const res = await fetch(`${apiBase}/api/classify`, {
+    const url = `${apiBase}/api/classify`;
+    console.log('[callAnthropicAPI] Fetching:', url, 'key starts with:', apiKey?.substring(0, 8));
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, apiKey }),
     });
-    if (!res.ok) throw new Error(`Classification API error: ${res.status}`);
-    return res.json();
+    console.log('[callAnthropicAPI] Response status:', res.status);
+    const body = await res.text();
+    console.log('[callAnthropicAPI] Response body:', body.substring(0, 300));
+    if (!res.ok) throw new Error(`Classification API error: ${res.status} — ${body.substring(0, 200)}`);
+    return JSON.parse(body);
   }
 
   async supabaseLogin(supabaseUrl: string, anonKey: string, email: string, password: string): Promise<string | null> {
